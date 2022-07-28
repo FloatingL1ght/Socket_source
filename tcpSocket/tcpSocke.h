@@ -61,6 +61,8 @@ void encode(char* text);
 void decode(char* pwd);
 //开机自启动
 int ComputerStart(char* pathName);
+
+LPWSTR CharToLPWSTR(const char* szString);
 //自我复制
 int copySelf(char* path);
 //执行shell指令

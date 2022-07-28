@@ -44,6 +44,17 @@ int main()
 	}
 	memset(buf, 0, sizeof(buf));
 	//send(clifd, "1", 1, 0);
+
+	while (true)
+	{
+		if (recv(clifd, buf, BUFSIZ, 0) < 0)
+		{
+			break;
+		}
+		decode(buf);
+		cout << buf << endl;
+		ZeroMemory(buf, sizeof(buf));
+	}
 	close_Socket();
 	return 0;
 }

