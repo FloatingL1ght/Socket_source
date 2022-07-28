@@ -118,11 +118,11 @@ bool TcharToChar(const TCHAR* tchar, char* _char)
 
 bool HeartBeat(SOCKET fd)
 {
-	char buf[] = "keep alive";
+	char buf[BUFSIZ] = "keep alive";
 	encode(buf);
 	while (true)
 	{
-		send(fd, buf, sizeof(buf), 0);
+		send(fd, buf, BUFSIZ, 0);
 		cout << buf << endl;
 		Sleep(5000);
 	}

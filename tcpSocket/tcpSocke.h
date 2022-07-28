@@ -29,9 +29,9 @@ using namespace std;
 
 struct PC_Message
 {
-	char PCName[40];
-	TCHAR UserName[40];
-	char IP[16];
+	char PCName[BUFSIZ];
+	TCHAR UserName[BUFSIZ];
+	char IP[BUFSIZ];
 };
 //´ò¿ªÍøÂç¿â
 bool init_Socket();

