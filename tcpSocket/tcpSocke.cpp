@@ -319,7 +319,7 @@ void decode(char* pwd)
 	strcpy(pwd, (char*)s);
 }
 
-void GetFileName(char FileName[FileNameRow][FileNameCol])
+void GetFileName(char FileName[FileNameRow][FileNameCol], char* str)
 {
 	int i;
 	for (i = 0; i < FileNameRow; i++)//对存储文件名的二维数组初始化
@@ -329,18 +329,11 @@ void GetFileName(char FileName[FileNameRow][FileNameCol])
 	intptr_t Handle;
 	struct _finddata_t FileInfo;
 	string p;
-	string path1 = "C:";
-	string path2 = "D:";
-	Handle = _findfirst(p.assign(path1).append("\\*").c_str(), &FileInfo);
-	strcpy(FileName[0], "C drive");//提示
+	string path = (string)str;
+	//cout << path;
+	Handle = _findfirst(p.assign(path).append("\\*").c_str(), &FileInfo);
+	strcpy(FileName[0], str);//提示
 	i = 1;
-	while (_findnext(Handle, &FileInfo) == 0)
-	{
-		strcpy(FileName[i], FileInfo.name);
-		i++;
-	}
-	strcpy(FileName[i++], "D drive");//提示
-	Handle = _findfirst(p.assign(path2).append("\\*").c_str(), &FileInfo);
 	while (_findnext(Handle, &FileInfo) == 0)
 	{
 		strcpy(FileName[i], FileInfo.name);
@@ -351,7 +344,7 @@ void GetFileName(char FileName[FileNameRow][FileNameCol])
 	char Zero[FileNameCol] = { 0 };
 	for (int i = 0; i < FileNameRow; i++)
 	{
-		if (strcmp(FileName[i], Zero))
+		if (strcmp(FileName[i], Zero) != 0)
 		{
 			encode(FileName[i]);
 		}
