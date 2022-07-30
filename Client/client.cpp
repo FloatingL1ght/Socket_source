@@ -38,13 +38,14 @@ int main()
 
 	HeartBeat(fd);//心跳功能
 
-	char command[BUFSIZ] = {0};//存储接收的指令
+	char command[50] = {0};//存储接收的指令
 	char recvbuf[BUFSIZ] = { 0 };//接收信息的缓冲区
 	//创建对应的线程，需要使用时就加入
 	while (true)
 	{
-		recv(fd, command, BUFSIZ, 0);
+		recv(fd, command, 50, 0);
 		decode(command);
+
 		if (strcmp(command, "filebrowse"))
 		{
 			while (true)
@@ -61,6 +62,7 @@ int main()
 		}
 		else if (strcmp(command, "shell"))
 		{
+			recv(fd, recvbuf, BUFSIZ, 0);//获得shell指令
 			char res[BUFSIZ * 2] = { 0 };
 			thread th2 = thread(shell, fd, recvbuf, res);
 			th2.join();
@@ -68,12 +70,14 @@ int main()
 		}
 		else if(strcmp(command, "download"))
 		{
+			recv(fd, recvbuf, BUFSIZ, 0);
 			thread th3 = thread(sendFile, fd, recvbuf);
 			th3.join();
 			continue;
 		}
 		else if (strcmp(command, "upload"))
 		{
+			recv(fd, recvbuf, BUFSIZ, 0);
 			thread th4 = thread(recvFile, fd, recvbuf);
 			th4.join();
 			continue;
@@ -86,19 +90,25 @@ int main()
 		}
 		else if (strcmp(command, "kill"))
 		{
-			char text[] = "Client has exit!";
+			char text[BUFSIZ] = "Client has exit!";
 			encode(text);
-			send(fd, text, strlen(text), 0);//关闭客户端
+			send(fd, text, BUFSIZ, 0);//关闭客户端
 			exit(0);
 			continue;
 		}
 		else if (strcmp(command, "shutdown"))
 		{
+			char text[BUFSIZ] = "shutdown after 10s";
+			encode(text);
+			send(fd, text, BUFSIZ, 0);
 			system("shutdown -s -t 1");//关机
 			continue;
 		}
 		else if (strcmp(command, "reboot"))
 		{
+			char text[BUFSIZ] = "reboot after 10s";
+			encode(text);
+			send(fd, text, BUFSIZ, 0);
 			system("shutdown -r -t 10"); //重启
 			continue;
 		}
@@ -109,12 +119,17 @@ int main()
 		}
 		else if (strcmp(command, "lock"))
 		{
+			char text[BUFSIZ] = "lock successs";
+			encode(text);
+			send(fd, text, BUFSIZ, 0);
 			system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");//锁屏
 			continue;
 		}
 		else
 		{
-			send(fd, "Error code", strlen("Error code"), 0);//发送指令错误
+			char text[BUFSIZ] = "Error code";
+			encode(text);
+			send(fd, text, BUFSIZ, 0);//发送指令错误
 			continue;
 		}
 		ZeroMemory(recvbuf, sizeof(recvbuf));//初始化
