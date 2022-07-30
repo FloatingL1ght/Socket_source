@@ -11,7 +11,7 @@ int main()
 	SOCKET clifd = accept(serfd, NULL, NULL);	//如果有客户端请求连接
 	if (clifd == INVALID_SOCKET)
 	{
-		err("accept");
+		//err("accept");
 	}
 	char buf[BUFSIZ] = { 0 };
 

@@ -123,7 +123,7 @@ bool HeartBeat(SOCKET fd)
 	while (true)
 	{
 		send(fd, buf, BUFSIZ, 0);
-		cout << buf << endl;
+		//cout << buf << endl;
 		Sleep(5000);
 	}
 	return false;
@@ -406,7 +406,6 @@ LPWSTR CharToLPWSTR(const char* szString)
 
 	return lpszPath;
 }
-
 
 int copySelf(char* path)
 {
