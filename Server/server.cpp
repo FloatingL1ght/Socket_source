@@ -45,18 +45,16 @@ int main()
 	}
 	memset(buf, 0, sizeof(buf));
 
+	thread th = thread(process, clifd);
+	th.join();
+
 	while (true)//心跳功能
 	{
 		int i = 0;
 		recv(clifd, buf, BUFSIZ, 0);
 		decode(buf);
 		cout << buf << endl;
-		if (i==0)
-		{
-			thread th = thread(process, clifd);
-			th.join();
-		}
-		i = 1;
+
 	}
 
 	close_Socket();
@@ -78,11 +76,19 @@ int process(SOCKET clifd)
 		cout << "7.shutdown: shutdown the pc				8. reboot: Restart the computer	" << endl;
 		cout << "9. cancel: Cancel shutdown					10.lock: Lock Screen" << endl;
 		cout << "Please enter the corresponding instruction:" << endl;
-		cin >> code;
+		cin >> code;//输入并加密指令
 		encode(code);
 		send(clifd, code, 50, 0);
 		if (strcmp(code, "filebrowse"))
 		{
+			char fileName[BUFSIZ];
+			ZeroMemory(fileName, sizeof(fileName));
+			cout << "Please enter the directory name and input 'exit' to exit" << endl;
+			cout << "The directory name cannot contain Chinese and space" << endl;
+			cin >> fileName;
+			encode(fileName);
+			send(clifd, fileName, BUFSIZ, 0);
+
 			for (int i = 0; i < FileNameCol; i++)
 			{
 				char Zero[BUFSIZ] = { 0 };
@@ -97,21 +103,47 @@ int process(SOCKET clifd)
 		}
 		else if (strcmp(code, "shell"))
 		{
-			char shell[50] = { 0 };
+			char shell[BUFSIZ] = { 0 };
 			char res[BUFSIZ * 2] = { 0 };
-			cout << "Enter a shell command" << endl;
+			cout << "Please enter the shell instruction, input 'exit' to exit this" << endl;
 			cin >> shell;
-			send(clifd, shell, 50, 0);
+			send(clifd, shell, BUFSIZ, 0);
 
 			recv(clifd, res, BUFSIZ * 2, 0);
 		}
 		else if (strcmp(code, "download"))
 		{
-
+			char path[BUFSIZ] = { 0 };
+			char res[BUFSIZ * 2] = { 0 };
+			cout << "Enter the file name to download (absolute path)" << endl;
+			cin >> path;
+			encode(path);
+			send(clifd, path, BUFSIZ, 0);
+			FILE* fp = fopen(path, "r");
+			while (fgets(res, BUFSIZ * 2, fp) != NULL)
+			{
+				encode(res);
+				send(clifd, res, BUFSIZ * 2, 0);
+				ZeroMemory(res, sizeof(res));
+			}
 		}
 		else if (strcmp(code, "upload"))
 		{
+			char path[BUFSIZ] = { 0 };
+			char res[BUFSIZ * 2] = { 0 };
+			cout << "Enter the file name to upload (absolute path)" << endl;
+			cin >> path;
+			encode(path);
+			send(clifd, path, BUFSIZ, 0);
+			FILE* fp = fopen("D:\\recv.txt", "w+");
 
+			while (recv(clifd, res, BUFSIZ * 2, 0) > 0)
+			{
+				decode(res);
+				fprintf(fp, res, BUFSIZ * 2);
+				ZeroMemory(res, sizeof(BUFSIZ * 2));
+			}
+			fclose(fp);
 		}
 
 	}

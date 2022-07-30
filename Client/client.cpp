@@ -190,6 +190,7 @@ int sendFile(SOCKET fd, char* buf)
 	ZeroMemory(buf, sizeof(buf));
 	recv(fd, buf, BUFSIZ, 0);//接收要下载的文件名（绝对路径）
 	char sendbuf[BUFSIZ * 2];
+
 	DWORD dwRead;
 	BOOL bRet;
 	Sleep(200);
@@ -213,12 +214,13 @@ int sendFile(SOCKET fd, char* buf)
 		}
 		else 
 		{
-			send(fd, sendbuf, dwRead, 0);
+			encode(sendbuf);
+			send(fd, sendbuf, BUFSIZ * 2, 0);
 		}
 	}
-	char res[] = "success";
+	char res[BUFSIZ] = "success";
 	encode(res);
-	send(fd, res, strlen(res) + 1, 0);
+	send(fd, res, BUFSIZ, 0);
 	return 0;
 }
 
@@ -231,14 +233,12 @@ int recvFile(SOCKET fd, char* buf)//文件下载
 	HANDLE hFile;               // 文件句柄
 	DWORD count;                // 写入的数据计数
 
-	hFile = CreateFile((LPCWSTR)buf, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_ARCHIVE, NULL);
+	hFile = CreateFile((LPCWSTR)(CString)buf, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_ARCHIVE, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) 
 	{
 		return 1;
 	}
-	char begin[] = "BEGIN";
-	encode(begin);
-	send(fd, begin, strlen(begin), 0);
+
 	while (true) 
 	{
 		// 从客户端读数据
@@ -255,9 +255,7 @@ int recvFile(SOCKET fd, char* buf)//文件下载
 		WriteFile(hFile, recvBuf, len, &count, 0);
 	}
 	Sleep(500);
-	char RECV[] = "RECV";
-	encode(RECV);
-	send(fd, RECV, strlen(RECV), 0);
+
 	return 0;
 }
 
