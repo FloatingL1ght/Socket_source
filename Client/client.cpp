@@ -53,7 +53,7 @@ int main()
 		}
 		else if (strcmp(command, "shell"))
 		{
-			thread th2 = thread(Shell, fd, recvbuf);
+			thread th2 = thread(shell, fd, recvbuf);
 			th2.join();
 			continue;
 		}
